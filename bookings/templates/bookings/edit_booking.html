@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <h1>Edit Booking</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if booking.nail_service %}
+            <div class="card shadow-sm border-0 mb-4" style="border-radius: 20px;">
+                <div class="card-body">
+                    <h3>Nails</h3>
+
+                    <label class="form-label">Nail colours</label>
+                    <textarea name="nail_colour_notes" class="form-control mb-3" rows="3">{{ booking.nail_colour_notes }}</textarea>
+
+                    <label class="form-label">Nail vibe</label>
+                    <textarea name="nail_vibe_notes" class="form-control" rows="3">{{ booking.nail_vibe_notes }}</textarea>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if booking.toe_service %}
+            <div class="card shadow-sm border-0 mb-4" style="border-radius: 20px;">
+                <div class="card-body">
+                    <h3>Toes</h3>
+
+                    <label class="form-label">Toe colours</label>
+                    <textarea name="toe_colour_notes" class="form-control mb-3" rows="3">{{ booking.toe_colour_notes }}</textarea>
+
+                    <label class="form-label">Toe vibe</label>
+                    <textarea name="toe_vibe_notes" class="form-control" rows="3">{{ booking.toe_vibe_notes }}</textarea>
+                </div>
+            </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-dark">Save Changes</button>
+        <a href="{% url 'account_dashboard' %}" class="btn btn-outline-dark">Cancel</a>
+    </form>
+</div>
+
+{% endblock %}

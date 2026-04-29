@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5">
+
+            <div class="card shadow-sm border-0" style="border-radius: 22px;">
+                <div class="card-body p-4 p-md-5 text-center">
+
+                    <div style="
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 50%;
+                        background: #f8f1f4;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 28px;
+                        margin: 0 auto 18px;
+                    ">
+                        💅
+                    </div>
+
+                    <h1 class="mb-2">Almost Done</h1>
+
+                    <p class="text-muted mb-4">
+                        Confirm your email to continue creating your Nail Art Studio account.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-4 text-start">
+                            <label class="form-label fw-semibold">Email Address</label>
+
+                            <input
+                                type="email"
+                                name="email"
+                                value="{{ form.email.value|default:'' }}"
+                                class="form-control form-control-lg"
+                                placeholder="name@example.com"
+                                required
+                            >
+
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-2">
+                                    {{ form.email.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger text-start">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-dark btn-lg w-100">
+                            Continue
+                        </button>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <p class="small text-muted mb-0">
+                        After this, we will ask for your phone number before allowing a booking.
+                    </p>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

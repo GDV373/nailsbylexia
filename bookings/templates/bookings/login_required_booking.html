@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center p-5">
+
+                    <h1 class="mb-3">Book an Appointment</h1>
+
+                    <p class="lead">
+                        To book your nail appointment, please log in or create an account first.
+                    </p>
+
+                    <p class="text-muted">
+                        We need your email and phone number so we can confirm your booking.
+                    </p>
+
+                    <div class="d-grid gap-3 mt-4">
+                        <a href="{% url 'login' %}?next={% url 'create_booking' %}" class="btn btn-dark btn-lg">
+                            Log In
+                        </a>
+
+                        <a href="{% url 'register' %}" class="btn btn-outline-dark btn-lg">
+                            Create Account
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+
+{% block content %}
+
+<style>
+    .auth-card {
+        border-radius: 22px;
+    }
+
+    .auth-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f1f4;
+        font-size: 26px;
+        margin: 0 auto 15px;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5">
+
+            <div class="card shadow-sm border-0 auth-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="auth-icon">💅</div>
+
+                    <h1 class="text-center mb-2">Welcome Back</h1>
+                    <p class="text-center text-muted mb-4">
+                        Log in to manage your bookings.
+                    </p>
+
+                    <form method="post" action="{% provider_login_url 'google' %}" class="mb-3">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-dark w-100 py-2">
+                            Continue with Google
+                        </button>
+                    </form>
+
+                    <div class="text-center text-muted my-3">
+                        <small>or log in with email</small>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <input type="hidden" name="next" value="{{ next }}">
+
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            {{ form.username }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            {{ form.password }}
+                        </div>
+
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                Invalid email or password.
+                            </div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-dark w-100 py-2">
+                            Log In
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <p class="text-center mb-0">
+                        No account yet?
+                        <a href="{% url 'register' %}">Create one</a>
+                    </p>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

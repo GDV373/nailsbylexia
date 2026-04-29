@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+
+{% block content %}
+
+<style>
+    .auth-card { border-radius: 24px; }
+    .validation-message { font-size: 0.875rem; margin-top: 6px; }
+    .valid-text { color: #198754; }
+    .invalid-text { color: #dc3545; }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <div class="card shadow-sm border-0 auth-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+                        <div style="width:60px;height:60px;border-radius:50%;background:#f8f1f4;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 18px;">
+                            💅
+                        </div>
+                        <h1>Create Your Account</h1>
+                        <p class="text-muted">Register to book appointments and manage your nail bookings.</p>
+                    </div>
+
+                    <form method="post" action="{% provider_login_url 'google' %}" class="mb-3">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-dark w-100 py-2">
+                            Continue with Google
+                        </button>
+                    </form>
+
+                    <div class="text-center text-muted my-3">
+                        <small>or register with email</small>
+                    </div>
+
+                    <form method="post" id="registerForm" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Full Name / Username</label>
+                            {{ form.username }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Email Address</label>
+                            {{ form.email }}
+                            <div id="emailFeedback" class="validation-message"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Mobile Number</label>
+
+                            <div class="input-group input-group-lg">
+                                <select id="countryCode" class="form-select" style="max-width: 170px;">
+                                    <option value="+356" data-country="MT" selected>🇲🇹 +356</option>
+                                    <option value="+44" data-country="GB">🇬🇧 +44</option>
+                                    <option value="+39" data-country="IT">🇮🇹 +39</option>
+                                    <option value="+33" data-country="FR">🇫🇷 +33</option>
+                                    <option value="+49" data-country="DE">🇩🇪 +49</option>
+                                    <option value="+34" data-country="ES">🇪🇸 +34</option>
+                                </select>
+
+                                <input
+                                    type="tel"
+                                    id="localPhone"
+                                    class="form-control"
+                                    placeholder="99123456"
+                                    required
+                                >
+                            </div>
+
+                            <input type="hidden" name="phone" id="phone">
+
+                            <div id="phoneFeedback" class="validation-message"></div>
+
+                            {% if form.phone.errors %}
+                                <div class="text-danger small mt-2">{{ form.phone.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Password</label>
+                            {{ form.password1 }}
+                            <div id="passwordFeedback" class="validation-message"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Confirm Password</label>
+                            {{ form.password2 }}
+                            <div id="passwordMatchFeedback" class="validation-message"></div>
+                        </div>
+
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                Please check the fields above.
+                            </div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-dark btn-lg w-100">
+                            Create Account
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <p class="text-center mb-0">
+                        Already have an account?
+                        <a href="{% url 'login' %}">Log in</a>
+                    </p>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("registerForm");
+
+    const emailInput = document.getElementById("id_email");
+    const countryCode = document.getElementById("countryCode");
+    const localPhone = document.getElementById("localPhone");
+    const hiddenPhone = document.getElementById("phone");
+
+    const password1 = document.getElementById("password1");
+    const password2 = document.getElementById("password2");
+
+    const emailFeedback = document.getElementById("emailFeedback");
+    const phoneFeedback = document.getElementById("phoneFeedback");
+    const passwordFeedback = document.getElementById("passwordFeedback");
+    const passwordMatchFeedback = document.getElementById("passwordMatchFeedback");
+
+    function validateEmail() {
+        const value = emailInput.value.trim();
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!value) {
+            emailFeedback.textContent = "";
+            return false;
+        }
+
+        if (!regex.test(value)) {
+            emailFeedback.textContent = "Please enter a valid email address.";
+            emailFeedback.className = "validation-message invalid-text";
+            return false;
+        }
+
+        emailFeedback.textContent = "Email looks valid.";
+        emailFeedback.className = "validation-message valid-text";
+        return true;
+    }
+
+    function validatePhone() {
+        let number = localPhone.value.replace(/\s+/g, "");
+        const code = countryCode.value;
+        const country = countryCode.options[countryCode.selectedIndex].dataset.country;
+
+        let valid = false;
+
+        if (country === "MT") {
+            valid = /^[279]\d{7}$/.test(number);
+        } else if (country === "GB") {
+            valid = /^7\d{9}$/.test(number) || /^07\d{9}$/.test(number);
+            if (number.startsWith("0")) number = number.substring(1);
+        } else if (country === "IT") {
+            valid = /^\d{9,10}$/.test(number);
+        } else {
+            valid = /^\d{6,14}$/.test(number);
+        }
+
+        if (!number) {
+            phoneFeedback.textContent = "";
+            return false;
+        }
+
+        if (!valid) {
+            phoneFeedback.textContent = "Please enter a valid number for the selected country.";
+            phoneFeedback.className = "validation-message invalid-text";
+            return false;
+        }
+
+        hiddenPhone.value = code + number;
+
+        phoneFeedback.textContent = "Phone number looks valid.";
+        phoneFeedback.className = "validation-message valid-text";
+        return true;
+    }
+
+    function validatePasswordStrength() {
+        if (!password1.value) {
+            passwordFeedback.textContent = "";
+            return false;
+        }
+
+        if (password1.value.length < 8) {
+            passwordFeedback.textContent = "Password must be at least 8 characters.";
+            passwordFeedback.className = "validation-message invalid-text";
+            return false;
+        }
+
+        passwordFeedback.textContent = "Password length is valid.";
+        passwordFeedback.className = "validation-message valid-text";
+        return true;
+    }
+
+    function validatePasswordMatch() {
+        if (!password2.value) {
+            passwordMatchFeedback.textContent = "";
+            return false;
+        }
+
+        if (password1.value !== password2.value) {
+            passwordMatchFeedback.textContent = "Passwords do not match.";
+            passwordMatchFeedback.className = "validation-message invalid-text";
+            return false;
+        }
+
+        passwordMatchFeedback.textContent = "Passwords match.";
+        passwordMatchFeedback.className = "validation-message valid-text";
+        return true;
+    }
+
+    emailInput.addEventListener("input", validateEmail);
+    localPhone.addEventListener("input", validatePhone);
+    countryCode.addEventListener("change", validatePhone);
+
+    password1.addEventListener("input", function () {
+        validatePasswordStrength();
+        validatePasswordMatch();
+    });
+
+    password2.addEventListener("input", validatePasswordMatch);
+
+    form.addEventListener("submit", function (event) {
+        const ok =
+            validateEmail() &&
+            validatePhone() &&
+            validatePasswordStrength() &&
+            validatePasswordMatch();
+
+        if (!ok) {
+            event.preventDefault();
+        }
+    });
+});
+</script>
+
+{% endblock %}

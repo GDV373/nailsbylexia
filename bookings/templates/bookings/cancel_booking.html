@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="card shadow-sm border-0" style="border-radius: 20px;">
+        <div class="card-body p-4">
+            <h1>Cancel Booking?</h1>
+
+            <p>Are you sure you want to cancel this booking?</p>
+
+            <p>
+                <strong>Date:</strong> {{ booking.start_time|date:"D d M Y" }}<br>
+                <strong>Time:</strong> {{ booking.start_time|date:"H:i" }} → {{ booking.end_time|date:"H:i" }}
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Yes, Cancel Booking</button>
+                <a href="{% url 'account_dashboard' %}" class="btn btn-outline-dark">Go Back</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

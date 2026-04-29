@@ -1,0 +1,887 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .step-card {
+        border-radius: 24px;
+        border: 0;
+        animation: fadeUp 0.25s ease both;
+    }
+
+    .choice-card {
+        border: 2px solid #eee;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: 0.2s ease;
+        height: 100%;
+        background: white;
+    }
+
+    .choice-card:hover {
+        transform: translateY(-3px);
+        border-color: #212529;
+    }
+
+    .choice-card.selected {
+        border-color: #212529;
+        background: #fff8fb;
+    }
+
+    .summary-card {
+        border-radius: 24px;
+        position: sticky;
+        top: 90px;
+        background: #111;
+        color: white;
+    }
+
+    .summary-card p,
+    .summary-card span,
+    .summary-card small {
+        color: #ddd;
+    }
+
+    .summary-card hr {
+        border-color: rgba(255,255,255,0.15);
+    }
+
+    .hidden-step {
+        display: none;
+    }
+
+    .date-week-btn[disabled],
+    .choice-card[disabled] {
+        opacity: 0.35;
+        background: #f3f3f3;
+        color: #888;
+        cursor: not-allowed;
+    }
+
+    .week-nav-btn {
+        min-width: 130px;
+    }
+
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 991px) {
+        .summary-card {
+            position: static;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .date-week-btn {
+            font-size: 0.75rem;
+            padding: 8px 4px !important;
+        }
+
+        .week-nav-btn {
+            min-width: auto;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+
+<div class="container py-5">
+
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">Book Your Appointment</h1>
+        <p class="text-muted">Choose nails, toes, or both.</p>
+    </div>
+
+    <form method="post" id="bookingForm">
+        {% csrf_token %}
+
+        <input type="hidden" name="booking_type" id="bookingTypeInput">
+        <input type="hidden" name="nail_service" id="nailServiceInput">
+        <input type="hidden" name="toe_service" id="toeServiceInput">
+        <input type="hidden" name="start_time" id="startTimeInput">
+        <input type="hidden" name="end_time" id="endTimeInput">
+
+        <div class="row g-4">
+
+            <div class="col-lg-8">
+
+                <div class="card shadow-sm step-card mb-4">
+                    <div class="card-body p-4">
+                        <h3>1. What would you like to book?</h3>
+
+                        <div class="row g-3 mt-2">
+
+                            <div class="col-md-4">
+                                <div class="choice-card p-4 text-center booking-type-card" data-type="nails">
+                                    <div class="fs-1">💅</div>
+                                    <h5>Nails</h5>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="choice-card p-4 text-center booking-type-card" data-type="toes">
+                                    <div class="fs-1">🦶</div>
+                                    <h5>Toes</h5>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="choice-card p-4 text-center booking-type-card" data-type="both">
+                                    <div class="fs-1">💅🦶</div>
+                                    <h5>Both</h5>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm step-card mb-4 hidden-step" id="nailsServiceStep">
+                    <div class="card-body p-4">
+                        <h3>2. Choose Nails Service</h3>
+
+                        <div class="row g-3 mt-2">
+                            {% for service in nail_services %}
+                                <div class="col-md-6">
+                                    <div
+                                        class="choice-card p-3 nail-service-card"
+                                        data-id="{{ service.id }}"
+                                        data-name="{{ service.name }}"
+                                        data-price="{{ service.price }}"
+                                        data-duration="{{ service.duration_minutes }}"
+                                    >
+                                        <h5>{{ service.name }}</h5>
+                                        <p class="text-muted mb-2">{{ service.description }}</p>
+                                        <strong>€{{ service.price }}</strong>
+                                        <span class="text-muted"> · {{ service.duration_minutes }} mins</span>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-warning mb-0">
+                                        No nail services are available yet.
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm step-card mb-4 hidden-step" id="nailsNotesStep">
+                    <div class="card-body p-4">
+                        <h3>Tell Us What You Want for Nails</h3>
+
+                        <label class="form-label fw-semibold">Nail colours</label>
+                        <textarea
+                            name="nail_colour_notes"
+                            class="form-control mb-3 booking-note"
+                            data-summary-target="nail-colour"
+                            rows="3"
+                            placeholder="Example: pink chrome, French tips, nude, red..."
+                        ></textarea>
+
+                        <label class="form-label fw-semibold">Nail vibe / design</label>
+                        <textarea
+                            name="nail_vibe_notes"
+                            class="form-control booking-note"
+                            data-summary-target="nail-vibe"
+                            rows="3"
+                            placeholder="Example: elegant, birthday, simple, free style..."
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm step-card mb-4 hidden-step" id="toesServiceStep">
+                    <div class="card-body p-4">
+                        <h3 id="toesTitle">Choose Toes Service</h3>
+
+                        <div class="row g-3 mt-2">
+                            {% for service in toe_services %}
+                                <div class="col-md-6">
+                                    <div
+                                        class="choice-card p-3 toe-service-card"
+                                        data-id="{{ service.id }}"
+                                        data-name="{{ service.name }}"
+                                        data-price="{{ service.price }}"
+                                        data-duration="{{ service.duration_minutes }}"
+                                    >
+                                        <h5>{{ service.name }}</h5>
+                                        <p class="text-muted mb-2">{{ service.description }}</p>
+                                        <strong>€{{ service.price }}</strong>
+                                        <span class="text-muted"> · {{ service.duration_minutes }} mins</span>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-warning mb-0">
+                                        No toe services are available yet.
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm step-card mb-4 hidden-step" id="toesNotesStep">
+                    <div class="card-body p-4">
+                        <h3>Tell Us What You Want for Toes</h3>
+
+                        <label class="form-label fw-semibold">Toe colours</label>
+                        <textarea
+                            name="toe_colour_notes"
+                            class="form-control mb-3 booking-note"
+                            data-summary-target="toe-colour"
+                            rows="3"
+                            placeholder="Example: white, nude, red, match nails..."
+                        ></textarea>
+
+                        <label class="form-label fw-semibold">Toe vibe / design</label>
+                        <textarea
+                            name="toe_vibe_notes"
+                            class="form-control booking-note"
+                            data-summary-target="toe-vibe"
+                            rows="3"
+                            placeholder="Example: simple, clean, match nails, free style..."
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm step-card mb-4 hidden-step" id="timeStep">
+                    <div class="card-body p-4">
+                        <h3>Choose Available Time</h3>
+                        <p class="text-muted">
+                            Move week by week. Grey days are unavailable. Only times that can fit your selected service duration are shown.
+                        </p>
+
+                        <div id="slotsContainer"></div>
+                    </div>
+                </div>
+
+                <div class="card shadow summary-card d-lg-none mb-4 hidden-step" id="mobileSummary">
+                    <div class="card-body p-4">
+                        <h4 class="mb-3">Booking Summary</h4>
+
+                        <div id="mobileNailSummary" class="hidden-step">
+                            <p><strong>💅 <span id="mobileNailName"></span></strong></p>
+                            <p>€<span id="mobileNailPrice"></span></p>
+                            <small>Colours: <span id="mobile-nail-colour">-</span></small><br>
+                            <small>Vibe: <span id="mobile-nail-vibe">-</span></small>
+                        </div>
+
+                        <div id="mobileToeSummary" class="hidden-step">
+                            <hr>
+                            <p><strong>🦶 <span id="mobileToeName"></span></strong></p>
+                            <p>€<span id="mobileToePrice"></span></p>
+                            <small>Colours: <span id="mobile-toe-colour">-</span></small><br>
+                            <small>Vibe: <span id="mobile-toe-vibe">-</span></small>
+                        </div>
+
+                        <hr>
+                        <p><strong>Total:</strong> €<span id="mobileTotalPrice">0</span></p>
+                        <p><strong>Duration:</strong> <span id="mobileTotalDuration">0</span> mins</p>
+                    </div>
+                </div>
+
+                <div class="form-check mb-3 hidden-step" id="cashStep">
+                    <input class="form-check-input" type="checkbox" name="cash_confirmed" id="cashConfirmed">
+                    <label class="form-check-label" for="cashConfirmed">
+                        Pay cash at appointment
+                    </label>
+                </div>
+
+                <button class="btn btn-dark btn-lg w-100 hidden-step" type="submit" id="confirmButton">
+                    Confirm Booking
+                </button>
+
+            </div>
+
+            <div class="col-lg-4 d-none d-lg-block">
+                <div class="card shadow summary-card">
+                    <div class="card-body p-4">
+
+                        <h4 class="mb-3">Booking Summary</h4>
+
+                        <p id="emptySummary">Choose a booking type to begin.</p>
+
+                        <div id="desktopNailSummary" class="hidden-step">
+                            <p><strong>💅 <span id="desktopNailName"></span></strong></p>
+                            <p>€<span id="desktopNailPrice"></span></p>
+                            <small>Colours: <span id="nail-colour">-</span></small><br>
+                            <small>Vibe: <span id="nail-vibe">-</span></small>
+                        </div>
+
+                        <div id="desktopToeSummary" class="hidden-step">
+                            <hr>
+                            <p><strong>🦶 <span id="desktopToeName"></span></strong></p>
+                            <p>€<span id="desktopToePrice"></span></p>
+                            <small>Colours: <span id="toe-colour">-</span></small><br>
+                            <small>Vibe: <span id="toe-vibe">-</span></small>
+                        </div>
+
+                        <div id="totalSummary" class="hidden-step">
+                            <hr>
+                            <p><strong>Total:</strong> €<span id="desktopTotalPrice">0</span></p>
+                            <p><strong>Duration:</strong> <span id="desktopTotalDuration">0</span> mins</p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let bookingType = "";
+    let nailService = null;
+    let toeService = null;
+
+    const bookingTypeInput = document.getElementById("bookingTypeInput");
+    const nailServiceInput = document.getElementById("nailServiceInput");
+    const toeServiceInput = document.getElementById("toeServiceInput");
+    const startTimeInput = document.getElementById("startTimeInput");
+    const endTimeInput = document.getElementById("endTimeInput");
+
+    const nailsServiceStep = document.getElementById("nailsServiceStep");
+    const nailsNotesStep = document.getElementById("nailsNotesStep");
+    const toesServiceStep = document.getElementById("toesServiceStep");
+    const toesNotesStep = document.getElementById("toesNotesStep");
+    const timeStep = document.getElementById("timeStep");
+    const slotsContainer = document.getElementById("slotsContainer");
+    const cashStep = document.getElementById("cashStep");
+    const confirmButton = document.getElementById("confirmButton");
+    const mobileSummary = document.getElementById("mobileSummary");
+
+    function show(el) {
+        el.classList.remove("hidden-step");
+    }
+
+    function hide(el) {
+        el.classList.add("hidden-step");
+    }
+
+    function clearSelected(selector) {
+        document.querySelectorAll(selector).forEach(function (card) {
+            card.classList.remove("selected");
+        });
+    }
+
+    function updateSummary() {
+        const emptySummary = document.getElementById("emptySummary");
+        const totalSummary = document.getElementById("totalSummary");
+
+        const desktopNailSummary = document.getElementById("desktopNailSummary");
+        const desktopToeSummary = document.getElementById("desktopToeSummary");
+        const mobileNailSummary = document.getElementById("mobileNailSummary");
+        const mobileToeSummary = document.getElementById("mobileToeSummary");
+
+        let totalPrice = 0;
+        let totalDuration = 0;
+
+        if (nailService) {
+            document.getElementById("desktopNailName").textContent = nailService.name;
+            document.getElementById("desktopNailPrice").textContent = nailService.price;
+            document.getElementById("mobileNailName").textContent = nailService.name;
+            document.getElementById("mobileNailPrice").textContent = nailService.price;
+
+            totalPrice += parseFloat(nailService.price);
+            totalDuration += parseInt(nailService.duration);
+
+            show(desktopNailSummary);
+            show(mobileNailSummary);
+        } else {
+            hide(desktopNailSummary);
+            hide(mobileNailSummary);
+        }
+
+        if (toeService) {
+            document.getElementById("desktopToeName").textContent = toeService.name;
+            document.getElementById("desktopToePrice").textContent = toeService.price;
+            document.getElementById("mobileToeName").textContent = toeService.name;
+            document.getElementById("mobileToePrice").textContent = toeService.price;
+
+            totalPrice += parseFloat(toeService.price);
+            totalDuration += parseInt(toeService.duration);
+
+            show(desktopToeSummary);
+            show(mobileToeSummary);
+        } else {
+            hide(desktopToeSummary);
+            hide(mobileToeSummary);
+        }
+
+        document.getElementById("desktopTotalPrice").textContent = totalPrice.toFixed(2);
+        document.getElementById("desktopTotalDuration").textContent = totalDuration;
+        document.getElementById("mobileTotalPrice").textContent = totalPrice.toFixed(2);
+        document.getElementById("mobileTotalDuration").textContent = totalDuration;
+
+        if (bookingType) {
+            hide(emptySummary);
+            show(mobileSummary);
+        } else {
+            show(emptySummary);
+            hide(mobileSummary);
+        }
+
+        if (totalDuration > 0) {
+            show(totalSummary);
+            loadAvailableSlots(totalDuration);
+        } else {
+            hide(totalSummary);
+            hide(timeStep);
+            hide(cashStep);
+            hide(confirmButton);
+        }
+    }
+
+    function resetSelectedTime() {
+        startTimeInput.value = "";
+        endTimeInput.value = "";
+        hide(cashStep);
+        hide(confirmButton);
+    }
+
+    function buildCalendarDays(allDates) {
+        const dateMap = {};
+        allDates.forEach(function (date) {
+            dateMap[date.date_key] = date;
+        });
+
+        const firstAvailable = new Date(allDates[0].date_key + "T00:00:00");
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let startDate = firstAvailable > today ? firstAvailable : today;
+
+        const dayOfWeek = startDate.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+        const weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() + mondayOffset);
+
+        const lastAvailable = new Date(allDates[allDates.length - 1].date_key + "T00:00:00");
+
+        const weeks = [];
+        let cursor = new Date(weekStart);
+
+        while (cursor <= lastAvailable) {
+            const week = [];
+
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(cursor);
+                d.setDate(cursor.getDate() + i);
+
+                const key = d.toISOString().split("T")[0];
+                const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+                week.push({
+                    key: key,
+                    dayName: dayNames[d.getDay()],
+                    label: d.getDate() + " " + monthNames[d.getMonth()],
+                    available: Boolean(dateMap[key]),
+                    data: dateMap[key] || null,
+                    past: d < today
+                });
+            }
+
+            weeks.push(week);
+            cursor.setDate(cursor.getDate() + 7);
+        }
+
+        return weeks;
+    }
+
+    function loadAvailableSlots(duration) {
+        fetch("{% url 'available_slots_api' %}?duration=" + duration)
+            .then(response => response.json())
+            .then(data => {
+                slotsContainer.innerHTML = "";
+
+                if (!data.months.length) {
+                    slotsContainer.innerHTML = `
+                        <div class="alert alert-warning mb-0">
+                            No available dates found for this booking duration.
+                        </div>
+                    `;
+                    show(timeStep);
+                    hide(cashStep);
+                    hide(confirmButton);
+                    return;
+                }
+
+                const allDates = [];
+
+                data.months.forEach(function (month) {
+                    month.dates.forEach(function (date) {
+                        allDates.push(date);
+                    });
+                });
+
+                const weeks = buildCalendarDays(allDates);
+
+                let currentWeekIndex = 0;
+                let selectedDate = null;
+
+                function renderWeek() {
+                    const weekDays = weeks[currentWeekIndex];
+
+                    let weekStartLabel = weekDays[0].label;
+                    let weekEndLabel = weekDays[6].label;
+
+                    let html = `
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <button
+                                type="button"
+                                class="btn btn-outline-dark btn-sm week-nav-btn"
+                                id="prevWeekBtn"
+                                ${currentWeekIndex === 0 ? "disabled" : ""}
+                            >
+                                ← Previous
+                            </button>
+
+                            <strong>${weekStartLabel} - ${weekEndLabel}</strong>
+
+                            <button
+                                type="button"
+                                class="btn btn-outline-dark btn-sm week-nav-btn"
+                                id="nextWeekBtn"
+                                ${currentWeekIndex + 1 >= weeks.length ? "disabled" : ""}
+                            >
+                                Next →
+                            </button>
+                        </div>
+
+                        <div class="row g-2 mb-4">
+                    `;
+
+                    weekDays.forEach(function (day) {
+                        const isSelected = selectedDate && selectedDate.date_key === day.key;
+                        const disabled = !day.available || day.past;
+
+                        html += `
+                            <div class="col">
+                                <button
+                                    type="button"
+                                    class="choice-card p-2 w-100 date-week-btn ${isSelected ? "selected" : ""}"
+                                    data-date="${day.key}"
+                                    ${disabled ? "disabled" : ""}
+                                >
+                                    <div class="fw-bold">${day.dayName}</div>
+                                    <div>${day.label}</div>
+                                </button>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                        </div>
+
+                        <div id="dayTimesContainer"></div>
+                    `;
+
+                    slotsContainer.innerHTML = html;
+
+                    document.getElementById("prevWeekBtn").addEventListener("click", function () {
+                        currentWeekIndex = Math.max(0, currentWeekIndex - 1);
+                        selectedDate = null;
+                        resetSelectedTime();
+                        renderWeek();
+                    });
+
+                    document.getElementById("nextWeekBtn").addEventListener("click", function () {
+                        currentWeekIndex = Math.min(weeks.length - 1, currentWeekIndex + 1);
+                        selectedDate = null;
+                        resetSelectedTime();
+                        renderWeek();
+                    });
+
+                    document.querySelectorAll(".date-week-btn").forEach(function (btn) {
+                        btn.addEventListener("click", function () {
+                            const selectedDay = weekDays.find(d => d.key === btn.dataset.date);
+
+                            if (!selectedDay || !selectedDay.available) {
+                                return;
+                            }
+
+                            selectedDate = selectedDay.data;
+
+                            resetSelectedTime();
+                            renderWeek();
+                            renderTimesForDate(selectedDate);
+                        });
+                    });
+
+                    if (selectedDate) {
+                        renderTimesForDate(selectedDate);
+                    }
+                }
+
+                function renderTimesForDate(date) {
+                    const container = document.getElementById("dayTimesContainer");
+
+                    const amSlots = date.slots.filter(function (slot) {
+                        const hour = parseInt(slot.time_label.substring(0, 2));
+                        return hour < 12;
+                    });
+
+                    const pmSlots = date.slots.filter(function (slot) {
+                        const hour = parseInt(slot.time_label.substring(0, 2));
+                        return hour >= 12;
+                    });
+
+                    let html = `
+                        <h5 class="fw-bold mb-3">Choose AM or PM</h5>
+
+                        <div class="d-flex gap-2 mb-4">
+                            <button
+                                type="button"
+                                class="btn ${amSlots.length ? "btn-outline-dark" : "btn-outline-secondary"} period-btn"
+                                data-period="am"
+                                ${amSlots.length ? "" : "disabled"}
+                            >
+                                AM
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn ${pmSlots.length ? "btn-outline-dark" : "btn-outline-secondary"} period-btn"
+                                data-period="pm"
+                                ${pmSlots.length ? "" : "disabled"}
+                            >
+                                PM
+                            </button>
+                        </div>
+
+                        <div id="periodSlotsContainer"></div>
+                    `;
+
+                    container.innerHTML = html;
+
+                    document.querySelectorAll(".period-btn").forEach(function (btn) {
+                        btn.addEventListener("click", function () {
+                            document.querySelectorAll(".period-btn").forEach(b => {
+                                b.classList.remove("btn-dark");
+                                b.classList.remove("btn-outline-dark");
+                                b.classList.add("btn-outline-dark");
+                            });
+
+                            btn.classList.remove("btn-outline-dark");
+                            btn.classList.add("btn-dark");
+
+                            if (btn.dataset.period === "am") {
+                                renderSlotButtons(amSlots);
+                            } else {
+                                renderSlotButtons(pmSlots);
+                            }
+                        });
+                    });
+
+                    if (amSlots.length) {
+                        document.querySelector('[data-period="am"]').click();
+                    } else if (pmSlots.length) {
+                        document.querySelector('[data-period="pm"]').click();
+                    }
+                }
+
+                function renderSlotButtons(slots) {
+                    const container = document.getElementById("periodSlotsContainer");
+
+                    let html = `
+                        <h5 class="fw-bold mb-3">Choose Start Time</h5>
+                        <div class="row g-3">
+                    `;
+
+                    slots.forEach(function (slot) {
+                        html += `
+                            <div class="col-md-6">
+                                <label
+                                    class="choice-card d-block p-3 slot-card"
+                                    data-start="${slot.start}"
+                                    data-end="${slot.end}"
+                                >
+                                    <input type="radio" name="slot_choice" required>
+                                    ${slot.time_label}
+                                </label>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div>`;
+
+                    container.innerHTML = html;
+
+                    document.querySelectorAll(".slot-card").forEach(function (card) {
+                        card.addEventListener("click", function () {
+                            startTimeInput.value = card.dataset.start;
+                            endTimeInput.value = card.dataset.end;
+
+                            document.querySelectorAll(".slot-card").forEach(c => {
+                                c.classList.remove("selected");
+                            });
+
+                            card.classList.add("selected");
+
+                            show(cashStep);
+                            show(confirmButton);
+                        });
+                    });
+                }
+
+                renderWeek();
+                show(timeStep);
+            });
+    }
+
+    document.querySelectorAll(".booking-type-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+            bookingType = card.dataset.type;
+            bookingTypeInput.value = bookingType;
+
+            clearSelected(".booking-type-card");
+            card.classList.add("selected");
+
+            nailService = null;
+            toeService = null;
+            nailServiceInput.value = "";
+            toeServiceInput.value = "";
+
+            hide(nailsNotesStep);
+            hide(toesNotesStep);
+            hide(timeStep);
+            hide(cashStep);
+            hide(confirmButton);
+
+            clearSelected(".nail-service-card");
+            clearSelected(".toe-service-card");
+
+            if (bookingType === "nails") {
+                show(nailsServiceStep);
+                hide(toesServiceStep);
+            }
+
+            if (bookingType === "toes") {
+                hide(nailsServiceStep);
+                show(toesServiceStep);
+            }
+
+            if (bookingType === "both") {
+                show(nailsServiceStep);
+                show(toesServiceStep);
+            }
+
+            updateSummary();
+        });
+    });
+
+    document.querySelectorAll(".nail-service-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+            nailService = {
+                id: card.dataset.id,
+                name: card.dataset.name,
+                price: card.dataset.price,
+                duration: card.dataset.duration
+            };
+
+            nailServiceInput.value = nailService.id;
+
+            clearSelected(".nail-service-card");
+            card.classList.add("selected");
+
+            show(nailsNotesStep);
+            updateSummary();
+        });
+    });
+
+    document.querySelectorAll(".toe-service-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+            toeService = {
+                id: card.dataset.id,
+                name: card.dataset.name,
+                price: card.dataset.price,
+                duration: card.dataset.duration
+            };
+
+            toeServiceInput.value = toeService.id;
+
+            clearSelected(".toe-service-card");
+            card.classList.add("selected");
+
+            show(toesNotesStep);
+            updateSummary();
+        });
+    });
+
+    document.querySelectorAll(".booking-note").forEach(function (el) {
+        el.addEventListener("input", function () {
+            const target = el.dataset.summaryTarget;
+            const value = el.value.trim() || "-";
+
+            const desktopTarget = document.getElementById(target);
+            const mobileTarget = document.getElementById("mobile-" + target);
+
+            if (desktopTarget) {
+                desktopTarget.textContent = value;
+            }
+
+            if (mobileTarget) {
+                mobileTarget.textContent = value;
+            }
+        });
+    });
+
+    document.getElementById("bookingForm").addEventListener("submit", function (event) {
+        const nailColour = document.querySelector("[name='nail_colour_notes']");
+        const nailVibe = document.querySelector("[name='nail_vibe_notes']");
+        const toeColour = document.querySelector("[name='toe_colour_notes']");
+        const toeVibe = document.querySelector("[name='toe_vibe_notes']");
+        const cashConfirmed = document.getElementById("cashConfirmed");
+
+        if (!bookingType) {
+            event.preventDefault();
+            alert("Please choose nails, toes, or both.");
+            return;
+        }
+
+        if ((bookingType === "nails" || bookingType === "both") && !nailService) {
+            event.preventDefault();
+            alert("Please choose a nail service.");
+            return;
+        }
+
+        if ((bookingType === "toes" || bookingType === "both") && !toeService) {
+            event.preventDefault();
+            alert("Please choose a toe service.");
+            return;
+        }
+
+        if ((bookingType === "nails" || bookingType === "both") && (!nailColour.value.trim() || !nailVibe.value.trim())) {
+            event.preventDefault();
+            alert("Please fill in the nail colours and vibe.");
+            return;
+        }
+
+        if ((bookingType === "toes" || bookingType === "both") && (!toeColour.value.trim() || !toeVibe.value.trim())) {
+            event.preventDefault();
+            alert("Please fill in the toe colours and vibe.");
+            return;
+        }
+
+        if (!startTimeInput.value || !endTimeInput.value) {
+            event.preventDefault();
+            alert("Please choose an available time.");
+            return;
+        }
+
+        if (!cashConfirmed.checked) {
+            event.preventDefault();
+            alert("Please confirm cash payment at appointment.");
+        }
+    });
+});
+</script>
+
+{% endblock %}

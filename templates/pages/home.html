@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="py-5 text-center bg-body-tertiary">
+    <div class="container">
+        <h1 class="display-5 fw-bold">Beautiful Nails, Simple Booking</h1>
+        <p class="lead mt-3">
+            Book your nail or toe art appointment online and choose the service that fits you best.
+        </p>
+
+        <div class="mt-4">
+            <a href="{% url 'create_booking' %}" class="btn btn-dark btn-lg">
+                Book Appointment
+            </a>
+            <a href="{% url 'services_page' %}" class="btn btn-outline-dark btn-lg ms-2">
+                View Services
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="container py-5">
+    <div class="row g-4 text-center">
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <h4>Gel Polish</h4>
+                    <p>Clean, glossy and long-lasting gel polish designs.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <h4>Nail Art</h4>
+                    <p>Custom colours, designs, mood boards and creative art.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <h4>Easy Booking</h4>
+                    <p>Choose a service and only available times will be shown.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}

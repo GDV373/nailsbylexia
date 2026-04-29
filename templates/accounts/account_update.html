@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@28.0.2/build/css/intlTelInput.css">
+
+<style>
+    .profile-card { border-radius: 24px; }
+    .iti { width: 100%; }
+    .validation-message { font-size: 0.875rem; margin-top: 6px; }
+    .valid-text { color: #198754; }
+    .invalid-text { color: #dc3545; }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <div class="card shadow-sm border-0 profile-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <h1 class="fw-bold mb-2 text-center">Edit Account Details</h1>
+                    <p class="text-muted text-center mb-4">
+                        Update your contact details used for bookings.
+                    </p>
+
+                    <form method="post" id="accountUpdateForm" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Name</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-2">{{ form.username.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Email</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-2">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Phone</label>
+                            {{ form.phone }}
+                            <div id="phoneFeedback" class="validation-message"></div>
+                            {% if form.phone.errors %}
+                                <div class="text-danger small mt-2">{{ form.phone.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-dark btn-lg w-100">
+                            Save Changes
+                        </button>
+
+                        <a href="{% url 'account_dashboard' %}" class="btn btn-outline-dark btn-lg w-100 mt-3">
+                            Cancel
+                        </a>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@28.0.2/build/js/intlTelInput.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@28.0.2/build/js/utils.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("accountUpdateForm");
+    const phoneInput = document.getElementById("phone");
+    const phoneFeedback = document.getElementById("phoneFeedback");
+
+    const iti = window.intlTelInput(phoneInput, {
+        initialCountry: "mt",
+        preferredCountries: ["mt", "gb", "it"],
+        separateDialCode: true,
+        nationalMode: false,
+        autoPlaceholder: "aggressive",
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@28.0.2/build/js/utils.js"
+    });
+
+    function validatePhone() {
+        if (!phoneInput.value.trim()) {
+            phoneFeedback.textContent = "Phone number is required.";
+            phoneFeedback.className = "validation-message invalid-text";
+            return false;
+        }
+
+        if (!iti.isValidNumber()) {
+            phoneFeedback.textContent = "Please enter a valid phone number for the selected country.";
+            phoneFeedback.className = "validation-message invalid-text";
+            return false;
+        }
+
+        phoneFeedback.textContent = "Phone number looks valid.";
+        phoneFeedback.className = "validation-message valid-text";
+        return true;
+    }
+
+    phoneInput.addEventListener("input", validatePhone);
+    phoneInput.addEventListener("countrychange", validatePhone);
+
+    form.addEventListener("submit", function (event) {
+        if (!validatePhone()) {
+            event.preventDefault();
+            return;
+        }
+
+        phoneInput.value = iti.getNumber();
+    });
+});
+</script>
+
+{% endblock %}

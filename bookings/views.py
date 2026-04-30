@@ -8,15 +8,22 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+import resend
 
 from services.models import NailService
 from .models import AvailabilitySlot, Booking
 
 
 def send_booking_email(booking, subject_prefix):
-    subject = f"{subject_prefix} - Nail Art Studio Booking"
+    resend.api_key = getattr(settings, "RESEND_API_KEY", None)
 
-    body = f"""
+    if not resend.api_key:
+        print("RESEND_API_KEY is missing. Email not sent.")
+        return
+
+    subject = f"{subject_prefix} - Nails by Lexia Booking"
+
+    body_text = f"""
 Booking Summary
 
 Client: {booking.client.username}
@@ -42,62 +49,71 @@ Payment: {booking.get_payment_method_display()}
 Status: {booking.get_status_display()}
 """
 
+    body_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 620px; margin: auto; background: #ffffff; border: 1px solid #eee; border-radius: 18px; overflow: hidden;">
+        <div style="background: #111; color: #fff; padding: 24px;">
+            <h1 style="margin: 0; font-size: 24px;">Nails by Lexia</h1>
+            <p style="margin: 8px 0 0; color: #ddd;">{subject_prefix}</p>
+        </div>
+
+        <div style="padding: 24px;">
+            <h2 style="margin-top: 0;">Booking Summary</h2>
+
+            <p><strong>Client:</strong> {booking.client.username}</p>
+            <p><strong>Email:</strong> {booking.client.email}</p>
+            <p><strong>Phone:</strong> {booking.client.phone}</p>
+
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+
+            <p><strong>Booking Type:</strong> {booking.get_booking_type_display()}</p>
+            <p><strong>Date:</strong> {booking.start_time.strftime("%d %B %Y")}</p>
+            <p><strong>Time:</strong> {booking.start_time.strftime("%H:%M")} to {booking.end_time.strftime("%H:%M")}</p>
+            <p><strong>Duration:</strong> {booking.total_duration_minutes} minutes</p>
+            <p><strong>Total Price:</strong> €{booking.total_price}</p>
+            <p><strong>Payment:</strong> {booking.get_payment_method_display()}</p>
+            <p><strong>Status:</strong> {booking.get_status_display()}</p>
+
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+
+            <h3>Services</h3>
+
+            <p><strong>Nails:</strong> {booking.nail_service.name if booking.nail_service else "Not selected"}</p>
+            <p><strong>Nail Colours:</strong> {booking.nail_colour_notes or "N/A"}</p>
+            <p><strong>Nail Vibe:</strong> {booking.nail_vibe_notes or "N/A"}</p>
+
+            <p><strong>Toes:</strong> {booking.toe_service.name if booking.toe_service else "Not selected"}</p>
+            <p><strong>Toe Colours:</strong> {booking.toe_colour_notes or "N/A"}</p>
+            <p><strong>Toe Vibe:</strong> {booking.toe_vibe_notes or "N/A"}</p>
+        </div>
+    </div>
+    """
+
     admin_email = getattr(settings, "ADMIN_BOOKING_EMAIL", None)
 
-    recipients = [booking.client.email]
+    recipients = []
+
+    if booking.client.email:
+        recipients.append(booking.client.email)
 
     if admin_email:
         recipients.append(admin_email)
 
-    method = "CANCEL" if booking.status == "cancelled" else "REQUEST"
-    event_status = "CANCELLED" if booking.status == "cancelled" else "CONFIRMED"
+    if not recipients:
+        print("No recipients found. Email not sent.")
+        return
 
-    uid = f"booking-{booking.id}@nailartstudio.local"
+    from_email = getattr(settings, "RESEND_FROM_EMAIL", "Nails by Lexia <onboarding@resend.dev>")
 
-    start_utc = booking.start_time.astimezone(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    end_utc = booking.end_time.astimezone(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    created_utc = booking.created_at.astimezone(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    now_utc = timezone.now().astimezone(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
-    summary = f"Nail Art Appointment - {booking.get_booking_type_display()}"
-    description = body.replace("\n", "\\n")
-
-    ics_content = f"""BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Nail Art Studio//Booking System//EN
-CALSCALE:GREGORIAN
-METHOD:{method}
-BEGIN:VEVENT
-UID:{uid}
-DTSTAMP:{now_utc}
-DTSTART:{start_utc}
-DTEND:{end_utc}
-CREATED:{created_utc}
-LAST-MODIFIED:{now_utc}
-SUMMARY:{summary}
-DESCRIPTION:{description}
-STATUS:{event_status}
-SEQUENCE:{1 if booking.status == "cancelled" else 0}
-END:VEVENT
-END:VCALENDAR
-"""
-
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=recipients,
-    )
-
-    filename = "booking-cancelled.ics" if booking.status == "cancelled" else "booking.ics"
-
-    email.attach(
-        filename,
-        ics_content,
-        "text/calendar"
-    )
-
-    email.send(fail_silently=True)
+    try:
+        resend.Emails.send({
+            "from": from_email,
+            "to": recipients,
+            "subject": subject,
+            "text": body_text,
+            "html": body_html,
+        })
+    except Exception as e:
+        print(f"Resend email failed: {e}")
 
 
 def get_available_slots(total_duration):

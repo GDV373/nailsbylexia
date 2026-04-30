@@ -126,6 +126,8 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Nails by Lexia <onboarding@resend.dev>")
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 

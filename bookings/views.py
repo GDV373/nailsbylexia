@@ -97,7 +97,7 @@ END:VCALENDAR
         "text/calendar"
     )
 
-    email.send(fail_silently=False)
+    email.send(fail_silently=True)
 
 
 def get_available_slots(total_duration):

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="card shadow-sm border-0 mx-auto" style="max-width: 650px; border-radius: 24px;">
+        <div class="card-body p-4 p-md-5">
+
+            <h1 class="fw-bold mb-3">Delete Availability?</h1>
+
+            <p>
+                Are you sure you want to delete:
+                <br>
+                <strong>{{ slot.start_time|date:"D d M Y" }} {{ slot.start_time|date:"H:i" }} → {{ slot.end_time|date:"H:i" }}</strong>
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <button class="btn btn-danger btn-lg w-100 mb-2" type="submit">Yes, Delete</button>
+                <a href="{% url 'availability_builder' %}" class="btn btn-outline-dark btn-lg w-100">Cancel</a>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

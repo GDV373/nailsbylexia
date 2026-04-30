@@ -4,10 +4,10 @@ from datetime import datetime, time
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from bookings.models import AvailabilitySlot, Booking
+from bookings.models import AvailabilitySlot
 from services.models import NailService
 
 
@@ -23,13 +23,8 @@ def availability_builder(request):
     ]
 
     weekdays = [
-        (0, "Monday"),
-        (1, "Tuesday"),
-        (2, "Wednesday"),
-        (3, "Thursday"),
-        (4, "Friday"),
-        (5, "Saturday"),
-        (6, "Sunday"),
+        (0, "Monday"), (1, "Tuesday"), (2, "Wednesday"),
+        (3, "Thursday"), (4, "Friday"), (5, "Saturday"), (6, "Sunday"),
     ]
 
     if request.method == "POST":
@@ -57,13 +52,8 @@ def availability_builder(request):
                     continue
 
                 is_weekend = weekday in [5, 6]
-
-                if is_weekend:
-                    start_raw = weekend_start
-                    end_raw = weekend_end
-                else:
-                    start_raw = weekday_start
-                    end_raw = weekday_end
+                start_raw = weekend_start if is_weekend else weekday_start
+                end_raw = weekend_end if is_weekend else weekday_end
 
                 if not start_raw or not end_raw:
                     continue
@@ -71,15 +61,8 @@ def availability_builder(request):
                 start_hour, start_minute = map(int, start_raw.split(":"))
                 end_hour, end_minute = map(int, end_raw.split(":"))
 
-                start_dt = datetime.combine(
-                    date_obj.date(),
-                    time(start_hour, start_minute)
-                )
-
-                end_dt = datetime.combine(
-                    date_obj.date(),
-                    time(end_hour, end_minute)
-                )
+                start_dt = datetime.combine(date_obj.date(), time(start_hour, start_minute))
+                end_dt = datetime.combine(date_obj.date(), time(end_hour, end_minute))
 
                 start_dt = timezone.make_aware(start_dt, current_tz)
                 end_dt = timezone.make_aware(end_dt, current_tz)
@@ -112,7 +95,7 @@ def availability_builder(request):
 
         return redirect("availability_builder")
 
-    slots = AvailabilitySlot.objects.order_by("-start_time")[:20]
+    slots = AvailabilitySlot.objects.order_by("start_time")
 
     return render(request, "dashboard/availability_builder.html", {
         "months": months,
@@ -123,33 +106,172 @@ def availability_builder(request):
 
 
 @staff_member_required
-def admin_users(request):
-    users = User.objects.all().order_by("-date_joined", "-id")
+def edit_availability(request, slot_id):
+    slot = get_object_or_404(AvailabilitySlot, id=slot_id)
 
-    return render(request, "dashboard/admin_users.html", {
-        "users": users,
+    if request.method == "POST":
+        date_raw = request.POST.get("date")
+        start_raw = request.POST.get("start_time")
+        end_raw = request.POST.get("end_time")
+        active = request.POST.get("active") == "on"
+
+        current_tz = timezone.get_current_timezone()
+
+        date_obj = datetime.strptime(date_raw, "%Y-%m-%d").date()
+        start_hour, start_minute = map(int, start_raw.split(":"))
+        end_hour, end_minute = map(int, end_raw.split(":"))
+
+        start_dt = timezone.make_aware(
+            datetime.combine(date_obj, time(start_hour, start_minute)),
+            current_tz
+        )
+        end_dt = timezone.make_aware(
+            datetime.combine(date_obj, time(end_hour, end_minute)),
+            current_tz
+        )
+
+        if end_dt <= start_dt:
+            messages.error(request, "End time must be after start time.")
+            return redirect("edit_availability", slot_id=slot.id)
+
+        slot.start_time = start_dt
+        slot.end_time = end_dt
+        slot.active = active
+        slot.save()
+
+        messages.success(request, "Availability updated.")
+        return redirect("availability_builder")
+
+    return render(request, "dashboard/edit_availability.html", {"slot": slot})
+
+
+@staff_member_required
+def delete_availability(request, slot_id):
+    slot = get_object_or_404(AvailabilitySlot, id=slot_id)
+
+    if request.method == "POST":
+        slot.delete()
+        messages.success(request, "Availability deleted.")
+        return redirect("availability_builder")
+
+    return render(request, "dashboard/delete_availability.html", {"slot": slot})
+
+
+@staff_member_required
+def services_manager(request):
+    nail_services = NailService.objects.filter(service_area="nails").order_by("name")
+    toe_services = NailService.objects.filter(service_area="toes").order_by("name")
+
+    return render(request, "dashboard/services_manager.html", {
+        "nail_services": nail_services,
+        "toe_services": toe_services,
     })
 
 
 @staff_member_required
+def add_service(request):
+    if request.method == "POST":
+        NailService.objects.create(
+            service_area=request.POST.get("service_area"),
+            name=request.POST.get("name"),
+            description=request.POST.get("description"),
+            duration_minutes=int(request.POST.get("duration_minutes")),
+            price=request.POST.get("price"),
+            active=request.POST.get("active") == "on",
+        )
+
+        messages.success(request, "Service added.")
+        return redirect("services_manager")
+
+    return render(request, "dashboard/service_form.html", {
+        "service": None,
+        "title": "Add Service",
+    })
+
+
+@staff_member_required
+def edit_service(request, service_id):
+    service = get_object_or_404(NailService, id=service_id)
+
+    if request.method == "POST":
+        service.service_area = request.POST.get("service_area")
+        service.name = request.POST.get("name")
+        service.description = request.POST.get("description")
+        service.duration_minutes = int(request.POST.get("duration_minutes"))
+        service.price = request.POST.get("price")
+        service.active = request.POST.get("active") == "on"
+        service.save()
+
+        messages.success(request, "Service updated.")
+        return redirect("services_manager")
+
+    return render(request, "dashboard/service_form.html", {
+        "service": service,
+        "title": "Edit Service",
+    })
+
+
+@staff_member_required
+def delete_service(request, service_id):
+    service = get_object_or_404(NailService, id=service_id)
+
+    if request.method == "POST":
+        service.delete()
+        messages.success(request, "Service deleted.")
+        return redirect("services_manager")
+
+    return render(request, "dashboard/delete_service.html", {"service": service})
+
+
+@staff_member_required
+def seed_default_services(request):
+    items = [
+        ("nails", "Gel-X", "Full cover soft gel extensions.", 120, 20),
+        ("nails", "Gelish", "Gel polish on natural nails.", 90, 30),
+        ("nails", "BIAB / Builder Gel", "Builder gel overlay for strength.", 120, 35),
+        ("nails", "Acrylic", "Strong extensions with custom shape.", 150, 40),
+        ("toes", "Toes Gelish", "Gel polish for toes.", 60, 20),
+        ("toes", "Toes Basic Polish", "Simple toe polish finish.", 45, 15),
+        ("toes", "Toes With Art", "Toe polish with simple nail art.", 75, 25),
+    ]
+
+    for area, name, desc, duration, price in items:
+        NailService.objects.update_or_create(
+            name=name,
+            defaults={
+                "service_area": area,
+                "description": desc,
+                "duration_minutes": duration,
+                "price": price,
+                "active": True,
+            }
+        )
+
+    messages.success(request, "Default nail and toe services added/updated.")
+    return redirect("services_manager")
+
+
+@staff_member_required
+def admin_users(request):
+    users = User.objects.all().order_by("-date_joined", "-id")
+    return render(request, "dashboard/admin_users.html", {"users": users})
+
+
+@staff_member_required
 def toggle_user_staff(request, user_id):
-    user_obj = User.objects.get(id=user_id)
+    user_obj = get_object_or_404(User, id=user_id)
 
     if request.method == "POST":
         user_obj.is_staff = not user_obj.is_staff
         user_obj.save()
-
-        messages.success(
-            request,
-            f"Staff access updated for {user_obj.email or user_obj.username}."
-        )
+        messages.success(request, "Staff access updated.")
 
     return redirect("admin_users")
 
 
 @staff_member_required
 def toggle_user_active(request, user_id):
-    user_obj = User.objects.get(id=user_id)
+    user_obj = get_object_or_404(User, id=user_id)
 
     if request.method == "POST":
         if user_obj == request.user:
@@ -158,18 +280,14 @@ def toggle_user_active(request, user_id):
 
         user_obj.is_active = not user_obj.is_active
         user_obj.save()
-
-        messages.success(
-            request,
-            f"Active status updated for {user_obj.email or user_obj.username}."
-        )
+        messages.success(request, "Active status updated.")
 
     return redirect("admin_users")
 
 
 @staff_member_required
 def toggle_user_superuser(request, user_id):
-    user_obj = User.objects.get(id=user_id)
+    user_obj = get_object_or_404(User, id=user_id)
 
     if request.method == "POST":
         if user_obj == request.user:
@@ -182,10 +300,6 @@ def toggle_user_superuser(request, user_id):
             user_obj.is_staff = True
 
         user_obj.save()
-
-        messages.success(
-            request,
-            f"Superuser access updated for {user_obj.email or user_obj.username}."
-        )
+        messages.success(request, "Superuser access updated.")
 
     return redirect("admin_users")

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="card shadow-sm border-0 mx-auto" style="max-width: 750px; border-radius: 24px;">
+        <div class="card-body p-4 p-md-5">
+
+            <h1 class="fw-bold mb-4">{{ title }}</h1>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Service Area</label>
+                    <select name="service_area" class="form-select form-select-lg" required>
+                        <option value="nails" {% if service and service.service_area == "nails" %}selected{% endif %}>Nails</option>
+                        <option value="toes" {% if service and service.service_area == "toes" %}selected{% endif %}>Toes</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Service Name</label>
+                    <input type="text" name="name" class="form-control form-control-lg" value="{{ service.name|default:'' }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea name="description" class="form-control" rows="4" required>{{ service.description|default:'' }}</textarea>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Duration Minutes</label>
+                        <input type="number" name="duration_minutes" class="form-control form-control-lg" value="{{ service.duration_minutes|default:60 }}" min="15" step="15" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Price €</label>
+                        <input type="number" name="price" class="form-control form-control-lg" value="{{ service.price|default:0 }}" min="0" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" name="active" id="active" {% if not service or service.active %}checked{% endif %}>
+                    <label class="form-check-label" for="active">Active</label>
+                </div>
+
+                <button class="btn btn-dark btn-lg w-100" type="submit">Save Service</button>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

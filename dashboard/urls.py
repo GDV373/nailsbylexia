@@ -3,6 +3,14 @@ from . import views
 
 urlpatterns = [
     path("availability/", views.availability_builder, name="availability_builder"),
+    path("availability/<int:slot_id>/edit/", views.edit_availability, name="edit_availability"),
+    path("availability/<int:slot_id>/delete/", views.delete_availability, name="delete_availability"),
+
+    path("services/", views.services_manager, name="services_manager"),
+    path("services/add/", views.add_service, name="add_service"),
+    path("services/<int:service_id>/edit/", views.edit_service, name="edit_service"),
+    path("services/<int:service_id>/delete/", views.delete_service, name="delete_service"),
+    path("services/seed-defaults/", views.seed_default_services, name="seed_default_services"),
 
     path("users/", views.admin_users, name="admin_users"),
     path("users/<int:user_id>/toggle-staff/", views.toggle_user_staff, name="toggle_user_staff"),

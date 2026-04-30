@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="card shadow-sm border-0 mx-auto" style="max-width: 650px; border-radius: 24px;">
+        <div class="card-body p-4 p-md-5">
+
+            <h1 class="fw-bold mb-3">Edit Availability</h1>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Date</label>
+                    <input type="date" name="date" class="form-control form-control-lg" value="{{ slot.start_time|date:'Y-m-d' }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Start Time</label>
+                    <input type="time" name="start_time" class="form-control form-control-lg" value="{{ slot.start_time|date:'H:i' }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">End Time</label>
+                    <input type="time" name="end_time" class="form-control form-control-lg" value="{{ slot.end_time|date:'H:i' }}" required>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" name="active" id="active" {% if slot.active %}checked{% endif %}>
+                    <label class="form-check-label" for="active">Active</label>
+                </div>
+
+                <button class="btn btn-dark btn-lg w-100" type="submit">Save Availability</button>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

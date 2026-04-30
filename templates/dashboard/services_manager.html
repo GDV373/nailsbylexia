@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Manage Services</h1>
+            <p class="text-muted mb-0">Add, remove and update nail/toe services, pricing and duration.</p>
+        </div>
+
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{% url 'add_service' %}" class="btn btn-dark">Add Service</a>
+            <a href="{% url 'seed_default_services' %}" class="btn btn-outline-dark">Add Default Services</a>
+            <a href="{% url 'availability_builder' %}" class="btn btn-outline-dark">Availability</a>
+        </div>
+    </div>
+
+    <h2 class="fw-bold mb-3">Nail Services</h2>
+
+    <div class="row g-3 mb-5">
+        {% for service in nail_services %}
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100" style="border-radius: 20px;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="fw-bold">{{ service.name }}</h5>
+                            {% if service.active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </div>
+
+                        <p class="text-muted">{{ service.description }}</p>
+                        <p class="mb-1"><strong>Price:</strong> €{{ service.price }}</p>
+                        <p><strong>Duration:</strong> {{ service.duration_minutes }} mins</p>
+
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'edit_service' service.id %}" class="btn btn-outline-dark btn-sm">Edit</a>
+                            <a href="{% url 'delete_service' service.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">No nail services yet.</div>
+        {% endfor %}
+    </div>
+
+    <h2 class="fw-bold mb-3">Toe Services</h2>
+
+    <div class="row g-3">
+        {% for service in toe_services %}
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 h-100" style="border-radius: 20px;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="fw-bold">{{ service.name }}</h5>
+                            {% if service.active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </div>
+
+                        <p class="text-muted">{{ service.description }}</p>
+                        <p class="mb-1"><strong>Price:</strong> €{{ service.price }}</p>
+                        <p><strong>Duration:</strong> {{ service.duration_minutes }} mins</p>
+
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'edit_service' service.id %}" class="btn btn-outline-dark btn-sm">Edit</a>
+                            <a href="{% url 'delete_service' service.id %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">No toe services yet.</div>
+        {% endfor %}
+    </div>
+
+</div>
+
+{% endblock %}

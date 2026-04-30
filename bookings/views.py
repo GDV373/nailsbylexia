@@ -104,15 +104,30 @@ def get_available_slots(total_duration):
     available_slots = []
     now = timezone.now()
 
-    existing_bookings = Booking.objects.filter(
-        status__in=["confirmed", "done"]
+    # Only check future availability
+    availability_slots = list(
+        AvailabilitySlot.objects.filter(
+            active=True,
+            end_time__gt=now
+        ).order_by("start_time")
     )
 
-    for slot in AvailabilitySlot.objects.filter(
-        active=True,
-        end_time__gt=now
-    ).order_by("start_time"):
+    if not availability_slots:
+        return available_slots
 
+    earliest_start = min(slot.start_time for slot in availability_slots)
+    latest_end = max(slot.end_time for slot in availability_slots)
+
+    # Load bookings ONCE, not inside every loop
+    existing_bookings = list(
+        Booking.objects.filter(
+            status__in=["confirmed", "done"],
+            start_time__lt=latest_end,
+            end_time__gt=earliest_start,
+        ).values("start_time", "end_time")
+    )
+
+    for slot in availability_slots:
         current_time = slot.start_time
 
         if current_time < now:
@@ -141,10 +156,15 @@ def get_available_slots(total_duration):
             if possible_end_time > slot.end_time:
                 break
 
-            overlap = existing_bookings.filter(
-                start_time__lt=possible_end_time,
-                end_time__gt=current_time
-            ).exists()
+            overlap = False
+
+            for booking in existing_bookings:
+                if (
+                    booking["start_time"] < possible_end_time
+                    and booking["end_time"] > current_time
+                ):
+                    overlap = True
+                    break
 
             if not overlap:
                 available_slots.append({

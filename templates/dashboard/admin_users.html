@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Manage Users</h1>
+            <p class="text-muted mb-0">View customers and manage admin access.</p>
+        </div>
+
+        <a href="{% url 'availability_builder' %}" class="btn btn-outline-dark mt-3 mt-md-0">
+            Back to Dashboard
+        </a>
+    </div>
+
+    {% if users %}
+        <div class="row g-3">
+            {% for account in users %}
+                <div class="col-12">
+                    <div class="card shadow-sm border-0" style="border-radius: 20px;">
+                        <div class="card-body">
+
+                            <h5 class="fw-bold mb-1">
+                                {{ account.email|default:account.username }}
+                            </h5>
+
+                            <p class="text-muted mb-2">
+                                Username: {{ account.username|default:"-" }}<br>
+                                Phone: {{ account.phone|default:"Not set" }}
+                            </p>
+
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                {% if account.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+
+                                {% if account.is_staff %}
+                                    <span class="badge bg-dark">Staff</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">Customer</span>
+                                {% endif %}
+
+                                {% if account.is_superuser %}
+                                    <span class="badge bg-warning text-dark">Superuser</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2">
+
+                                <form method="post" action="{% url 'toggle_user_staff' account.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-dark" type="submit">
+                                        {% if account.is_staff %}Remove Staff{% else %}Make Staff{% endif %}
+                                    </button>
+                                </form>
+
+                                <form method="post" action="{% url 'toggle_user_superuser' account.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-warning" type="submit">
+                                        {% if account.is_superuser %}Remove Superuser{% else %}Make Superuser{% endif %}
+                                    </button>
+                                </form>
+
+                                <form method="post" action="{% url 'toggle_user_active' account.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">
+                                        {% if account.is_active %}Deactivate{% else %}Activate{% endif %}
+                                    </button>
+                                </form>
+
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">No users found.</div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .admin-card {
+        border-radius: 24px;
+        border: 0;
+    }
+
+    .user-row {
+        border-radius: 18px;
+        border: 1px solid #eee;
+        transition: 0.2s ease;
+    }
+
+    .user-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
+    }
+
+    .status-pill {
+        font-size: 0.75rem;
+        border-radius: 999px;
+        padding: 5px 10px;
+    }
+</style>
+
+<div class="container py-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Manage Users</h1>
+            <p class="text-muted mb-0">
+                View customers and manage staff/admin access.
+            </p>
+        </div>
+
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{% url 'availability_builder' %}" class="btn btn-outline-dark">
+                Availability
+            </a>
+
+            <a href="/admin/" class="btn btn-dark">
+                Django Admin
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm admin-card mb-4">
+        <div class="card-body p-4">
+            <h4 class="fw-bold mb-2">Important</h4>
+            <p class="text-muted mb-0">
+                Staff users can access the admin dashboard. Superusers have full access.
+                Be careful when giving superuser access.
+            </p>
+        </div>
+    </div>
+
+    {% if users %}
+        <div class="row g-3">
+
+            {% for account in users %}
+                <div class="col-12">
+
+                    <div class="user-row bg-white p-3 p-md-4">
+
+                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+
+                            <div>
+                                <h5 class="fw-bold mb-1">
+                                    {{ account.email|default:account.username }}
+                                </h5>
+
+                                <p class="text-muted mb-2">
+                                    Username: {{ account.username|default:"-" }}
+                                    <br>
+                                    Phone: {{ account.phone|default:"Not set" }}
+                                </p>
+
+                                <div class="d-flex flex-wrap gap-2">
+
+                                    {% if account.is_active %}
+                                        <span class="badge bg-success status-pill">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary status-pill">Inactive</span>
+                                    {% endif %}
+
+                                    {% if account.is_staff %}
+                                        <span class="badge bg-dark status-pill">Staff</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark status-pill">Customer</span>
+                                    {% endif %}
+
+                                    {% if account.is_superuser %}
+                                        <span class="badge bg-warning text-dark status-pill">Superuser</span>
+                                    {% endif %}
+
+                                    {% if account == request.user %}
+                                        <span class="badge bg-info text-dark status-pill">You</span>
+                                    {% endif %}
+
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+
+                                <form method="post" action="{% url 'toggle_user_staff' account.id %}">
+                                    {% csrf_token %}
+                                    {% if account.is_staff %}
+                                        <button class="btn btn-outline-warning btn-sm w-100" type="submit">
+                                            Remove Staff
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-outline-dark btn-sm w-100" type="submit">
+                                            Make Staff
+                                        </button>
+                                    {% endif %}
+                                </form>
+
+                                <form method="post" action="{% url 'toggle_user_superuser' account.id %}">
+                                    {% csrf_token %}
+                                    {% if account.is_superuser %}
+                                        <button class="btn btn-outline-danger btn-sm w-100" type="submit">
+                                            Remove Superuser
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-outline-dark btn-sm w-100" type="submit">
+                                            Make Superuser
+                                        </button>
+                                    {% endif %}
+                                </form>
+
+                                <form method="post" action="{% url 'toggle_user_active' account.id %}">
+                                    {% csrf_token %}
+                                    {% if account.is_active %}
+                                        <button class="btn btn-outline-danger btn-sm w-100" type="submit">
+                                            Deactivate
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-outline-success btn-sm w-100" type="submit">
+                                            Activate
+                                        </button>
+                                    {% endif %}
+                                </form>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            {% endfor %}
+
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No users found.
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

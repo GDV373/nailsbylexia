@@ -3,10 +3,15 @@ from datetime import datetime, time
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import get_user_model
 from django.shortcuts import render, redirect
 from django.utils import timezone
 
-from bookings.models import AvailabilitySlot
+from bookings.models import AvailabilitySlot, Booking
+from services.models import NailService
+
+
+User = get_user_model()
 
 
 @staff_member_required
@@ -39,7 +44,6 @@ def availability_builder(request):
 
         created_count = 0
         skipped_count = 0
-
         current_tz = timezone.get_current_timezone()
 
         for month in selected_months:
@@ -116,3 +120,72 @@ def availability_builder(request):
         "slots": slots,
         "current_year": timezone.now().year,
     })
+
+
+@staff_member_required
+def admin_users(request):
+    users = User.objects.all().order_by("-date_joined", "-id")
+
+    return render(request, "dashboard/admin_users.html", {
+        "users": users,
+    })
+
+
+@staff_member_required
+def toggle_user_staff(request, user_id):
+    user_obj = User.objects.get(id=user_id)
+
+    if request.method == "POST":
+        user_obj.is_staff = not user_obj.is_staff
+        user_obj.save()
+
+        messages.success(
+            request,
+            f"Staff access updated for {user_obj.email or user_obj.username}."
+        )
+
+    return redirect("admin_users")
+
+
+@staff_member_required
+def toggle_user_active(request, user_id):
+    user_obj = User.objects.get(id=user_id)
+
+    if request.method == "POST":
+        if user_obj == request.user:
+            messages.error(request, "You cannot deactivate your own account.")
+            return redirect("admin_users")
+
+        user_obj.is_active = not user_obj.is_active
+        user_obj.save()
+
+        messages.success(
+            request,
+            f"Active status updated for {user_obj.email or user_obj.username}."
+        )
+
+    return redirect("admin_users")
+
+
+@staff_member_required
+def toggle_user_superuser(request, user_id):
+    user_obj = User.objects.get(id=user_id)
+
+    if request.method == "POST":
+        if user_obj == request.user:
+            messages.error(request, "You cannot remove your own superuser access.")
+            return redirect("admin_users")
+
+        user_obj.is_superuser = not user_obj.is_superuser
+
+        if user_obj.is_superuser:
+            user_obj.is_staff = True
+
+        user_obj.save()
+
+        messages.success(
+            request,
+            f"Superuser access updated for {user_obj.email or user_obj.username}."
+        )
+
+    return redirect("admin_users")

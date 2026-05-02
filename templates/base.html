@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Nail Art Studio</title>
+    <title>Nails by Lexia</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap -->
@@ -11,17 +11,21 @@
 
 <body>
 
+<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
     <div class="container">
 
+        <!-- Logo -->
         <a class="navbar-brand fw-bold" href="{% url 'home' %}">
-            💅 Nail Art Studio
+            💅 Nails by Lexia
         </a>
 
+        <!-- Burger button -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
             <span class="navbar-toggler-icon"></span>
         </button>
 
+        <!-- Menu -->
         <div class="collapse navbar-collapse" id="mainNavbar">
             <ul class="navbar-nav ms-auto align-items-lg-center">
 
@@ -43,6 +47,12 @@
 
                 {% if user.is_authenticated %}
 
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'account_dashboard' %}">
+                            My Account
+                        </a>
+                    </li>
+
                     {% if user.is_staff %}
                         <li class="nav-item">
                             <a class="btn btn-dark ms-lg-3 mt-2 mt-lg-0" href="{% url 'availability_builder' %}">
@@ -50,12 +60,6 @@
                             </a>
                         </li>
                     {% endif %}
-
-                    <li class="nav-item">
-                        <a class="btn btn-outline-dark ms-lg-2 mt-2 mt-lg-0" href="{% url 'account_dashboard' %}">
-                            My Account
-                        </a>
-                    </li>
 
                     <li class="nav-item">
                         <a class="btn btn-outline-danger ms-lg-2 mt-2 mt-lg-0" href="{% url 'logout' %}">
@@ -85,6 +89,8 @@
     </div>
 </nav>
 
+
+<!-- MESSAGES -->
 {% if messages %}
     <div class="container mt-3">
         {% for message in messages %}
@@ -95,20 +101,26 @@
     </div>
 {% endif %}
 
+
+<!-- MAIN CONTENT -->
 <main>
     {% block content %}
     {% endblock %}
 </main>
 
+
+<!-- FOOTER -->
 <footer class="bg-light text-center py-4 mt-5">
     <div class="container">
-        <p class="mb-1 fw-bold">Nail Art Studio</p>
+        <p class="mb-1 fw-bold">Nails by Lexia</p>
         <p class="mb-0 text-muted small">
             © 2026 All rights reserved
         </p>
     </div>
 </footer>
 
+
+<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>

@@ -2,13 +2,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import render, redirect
-from django.contrib import messages
-
 from bookings.models import Booking
+
 from .forms import RegisterForm, LoginForm, CompleteProfileForm, AccountUpdateForm
 
 
@@ -94,14 +92,17 @@ def complete_profile_view(request):
 
 
 @login_required
-def account_dashboard_view(request):
-    if not request.user.phone:
-        return redirect("complete_profile")
+def account_dashboard(request):
+    all_bookings = Booking.objects.filter(client=request.user).order_by("-start_time")
 
-    bookings = Booking.objects.filter(client=request.user).order_by("-created_at")
+    active_bookings = all_bookings.exclude(status__in=["cancelled", "done"]).order_by("start_time")
+    done_bookings = all_bookings.filter(status="done").order_by("-start_time")
+    cancelled_bookings = all_bookings.filter(status="cancelled").order_by("-start_time")
 
     return render(request, "accounts/account_dashboard.html", {
-        "bookings": bookings,
+        "active_bookings": active_bookings,
+        "done_bookings": done_bookings,
+        "cancelled_bookings": cancelled_bookings,
     })
 
 

@@ -1,0 +1,101 @@
+<div class="card shadow-sm booking-card h-100">
+    <div class="card-body">
+
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <h5 class="fw-bold mb-0">
+                    {{ booking.get_booking_type_display }}
+                </h5>
+                <small class="text-muted">
+                    Created {{ booking.created_at|date:"d M Y" }}
+                </small>
+            </div>
+
+            {% if booking.status == "cancelled" %}
+                <span class="badge bg-danger badge-status">
+                    {{ booking.get_status_display }}
+                </span>
+            {% elif booking.status == "done" %}
+                <span class="badge bg-success badge-status">
+                    {{ booking.get_status_display }}
+                </span>
+            {% else %}
+                <span class="badge bg-dark badge-status">
+                    {{ booking.get_status_display }}
+                </span>
+            {% endif %}
+        </div>
+
+        <hr>
+
+        <!-- DATE -->
+        <p class="mb-1">
+            <strong>Date:</strong> {{ booking.start_time|date:"D d M Y" }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Time:</strong> {{ booking.start_time|date:"H:i" }} → {{ booking.end_time|date:"H:i" }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Duration:</strong> {{ booking.total_duration_minutes }} mins
+        </p>
+
+        <p class="mb-1">
+            <strong>Total Price:</strong> €{{ booking.total_price }}
+        </p>
+
+        <p class="mb-3">
+            <strong>Payment:</strong> {{ booking.get_payment_method_display }}
+        </p>
+
+        <!-- NAILS -->
+        {% if booking.nail_service %}
+            <div class="mb-3">
+                <p class="fw-semibold mb-1">💅 Nails</p>
+                <p class="mb-1">{{ booking.nail_service.name }}</p>
+
+                <small class="text-muted d-block">
+                    Colours: {{ booking.nail_colour_notes|default:"-" }}
+                </small>
+
+                <small class="text-muted">
+                    Vibe: {{ booking.nail_vibe_notes|default:"-" }}
+                </small>
+            </div>
+        {% endif %}
+
+        <!-- TOES -->
+        {% if booking.toe_service %}
+            <div class="mb-3">
+                <p class="fw-semibold mb-1">🦶 Toes</p>
+                <p class="mb-1">{{ booking.toe_service.name }}</p>
+
+                <small class="text-muted d-block">
+                    Colours: {{ booking.toe_colour_notes|default:"-" }}
+                </small>
+
+                <small class="text-muted">
+                    Vibe: {{ booking.toe_vibe_notes|default:"-" }}
+                </small>
+            </div>
+        {% endif %}
+
+        <!-- ACTIONS -->
+        {% if allow_actions and booking.status != "cancelled" %}
+            <div class="d-flex gap-2 mt-3">
+
+                <a href="{% url 'edit_booking' booking.id %}" class="btn btn-outline-dark btn-sm">
+                    Edit
+                </a>
+
+                <a href="{% url 'cancel_booking' booking.id %}" class="btn btn-outline-danger btn-sm">
+                    Cancel
+                </a>
+
+            </div>
+        {% endif %}
+
+    </div>
+</div>

@@ -13,10 +13,34 @@
         transform: translateY(-3px);
     }
 
+    .booking-scroll-wrapper {
+        position: relative;
+    }
+
+    .booking-scroll {
+        display: flex;
+        gap: 18px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        padding: 6px 4px 18px;
+        scrollbar-width: thin;
+    }
+
+    .booking-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .booking-scroll::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 20px;
+    }
+
     .booking-card {
         border-radius: 20px;
         border: 0;
         transition: 0.2s ease;
+        min-width: 340px;
+        max-width: 340px;
     }
 
     .booking-card:hover {
@@ -25,6 +49,45 @@
 
     .badge-status {
         font-size: 0.8rem;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .scroll-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .scroll-btn {
+        border-radius: 999px;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+    }
+
+    .empty-box {
+        border-radius: 18px;
+        background: #f8f9fa;
+        padding: 18px;
+        color: #666;
+    }
+
+    @media (max-width: 576px) {
+        .booking-card {
+            min-width: 88vw;
+            max-width: 88vw;
+        }
+
+        .section-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
     }
 </style>
 
@@ -94,145 +157,128 @@
                         Availability Builder
                     </a>
 
+                    <a href="{% url 'services_manager' %}" class="btn btn-outline-dark">
+                        Manage Services
+                    </a>
+
+                    <a href="{% url 'admin_users' %}" class="btn btn-outline-dark">
+                        Manage Users
+                    </a>
+
                     <a href="/admin/" class="btn btn-outline-dark">
                         Django Admin
                     </a>
-
-                    {% url 'admin_users' as admin_users_url %}
-                    {% if admin_users_url %}
-                        <a href="{{ admin_users_url }}" class="btn btn-outline-dark">
-                            Manage Users
-                        </a>
-                    {% endif %}
                 </div>
             </div>
         </div>
     {% endif %}
 
-    <!-- BOOKINGS -->
-    <h2 class="fw-bold mb-3">Booking History</h2>
 
-    {% if bookings %}
-        <div class="row g-4">
+    <!-- ACTIVE BOOKINGS -->
+    <section class="mb-5">
+        <div class="section-header">
+            <div>
+                <h2 class="fw-bold mb-1">Upcoming Bookings</h2>
+                <p class="text-muted mb-0">Your active upcoming appointments.</p>
+            </div>
 
-            {% for booking in bookings %}
-                <div class="col-md-6">
+            <div class="scroll-actions">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('activeBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('activeBookings', 1)">›</button>
+            </div>
+        </div>
 
-                    <div class="card shadow-sm booking-card h-100">
-                        <div class="card-body">
-
-                            <!-- HEADER -->
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <h5 class="fw-bold mb-0">
-                                        {{ booking.get_booking_type_display }}
-                                    </h5>
-                                    <small class="text-muted">
-                                        {{ booking.created_at|date:"d M Y" }}
-                                    </small>
-                                </div>
-
-                                {% if booking.status == "cancelled" %}
-                                    <span class="badge bg-danger badge-status">
-                                        {{ booking.get_status_display }}
-                                    </span>
-                                {% elif booking.status == "done" %}
-                                    <span class="badge bg-success badge-status">
-                                        {{ booking.get_status_display }}
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-dark badge-status">
-                                        {{ booking.get_status_display }}
-                                    </span>
-                                {% endif %}
-                            </div>
-
-                            <hr>
-
-                            <!-- DATE -->
-                            <p class="mb-1">
-                                <strong>Date:</strong> {{ booking.start_time|date:"D d M Y" }}
-                            </p>
-
-                            <p class="mb-1">
-                                <strong>Time:</strong> {{ booking.start_time|date:"H:i" }} → {{ booking.end_time|date:"H:i" }}
-                            </p>
-
-                            <p class="mb-1">
-                                <strong>Duration:</strong> {{ booking.total_duration_minutes }} mins
-                            </p>
-
-                            <p class="mb-1">
-                                <strong>Total Price:</strong> €{{ booking.total_price }}
-                            </p>
-
-                            <p class="mb-3">
-                                <strong>Payment:</strong> {{ booking.get_payment_method_display }}
-                            </p>
-
-                            <!-- NAILS -->
-                            {% if booking.nail_service %}
-                                <div class="mb-3">
-                                    <p class="fw-semibold mb-1">💅 Nails</p>
-                                    <p class="mb-1">{{ booking.nail_service.name }}</p>
-
-                                    <small class="text-muted d-block">
-                                        Colours: {{ booking.nail_colour_notes|default:"-" }}
-                                    </small>
-
-                                    <small class="text-muted">
-                                        Vibe: {{ booking.nail_vibe_notes|default:"-" }}
-                                    </small>
-                                </div>
-                            {% endif %}
-
-                            <!-- TOES -->
-                            {% if booking.toe_service %}
-                                <div class="mb-3">
-                                    <p class="fw-semibold mb-1">🦶 Toes</p>
-                                    <p class="mb-1">{{ booking.toe_service.name }}</p>
-
-                                    <small class="text-muted d-block">
-                                        Colours: {{ booking.toe_colour_notes|default:"-" }}
-                                    </small>
-
-                                    <small class="text-muted">
-                                        Vibe: {{ booking.toe_vibe_notes|default:"-" }}
-                                    </small>
-                                </div>
-                            {% endif %}
-
-                            <!-- ACTIONS -->
-                            {% if booking.status != "cancelled" %}
-                                <div class="d-flex gap-2 mt-3">
-
-                                    <a href="{% url 'edit_booking' booking.id %}" class="btn btn-outline-dark btn-sm">
-                                        Edit
-                                    </a>
-
-                                    <a href="{% url 'cancel_booking' booking.id %}" class="btn btn-outline-danger btn-sm">
-                                        Cancel
-                                    </a>
-
-                                </div>
-                            {% endif %}
-
-                        </div>
-                    </div>
-
+        {% if active_bookings %}
+            <div class="booking-scroll-wrapper">
+                <div class="booking-scroll" id="activeBookings">
+                    {% for booking in active_bookings %}
+                        {% include "accounts/partials/booking_card.html" with booking=booking allow_actions=True %}
+                    {% endfor %}
                 </div>
-            {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                You do not have any upcoming bookings.
+            </div>
+        {% endif %}
+    </section>
 
+
+    <!-- COMPLETED BOOKINGS -->
+    <section class="mb-5">
+        <div class="section-header">
+            <div>
+                <h2 class="fw-bold mb-1">Completed Bookings</h2>
+                <p class="text-muted mb-0">Previous appointments marked as done.</p>
+            </div>
+
+            <div class="scroll-actions">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('doneBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('doneBookings', 1)">›</button>
+            </div>
         </div>
 
-    {% else %}
+        {% if done_bookings %}
+            <div class="booking-scroll-wrapper">
+                <div class="booking-scroll" id="doneBookings">
+                    {% for booking in done_bookings %}
+                        {% include "accounts/partials/booking_card.html" with booking=booking allow_actions=False %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No completed bookings yet.
+            </div>
+        {% endif %}
+    </section>
 
-        <div class="alert alert-info mt-3">
-            You do not have any bookings yet.
+
+    <!-- CANCELLED BOOKINGS -->
+    <section class="mb-5">
+        <div class="section-header">
+            <div>
+                <h2 class="fw-bold mb-1">Cancelled Bookings</h2>
+                <p class="text-muted mb-0">Cancelled appointments are kept for your records.</p>
+            </div>
+
+            <div class="scroll-actions">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('cancelledBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('cancelledBookings', 1)">›</button>
+            </div>
         </div>
 
-    {% endif %}
+        {% if cancelled_bookings %}
+            <div class="booking-scroll-wrapper">
+                <div class="booking-scroll" id="cancelledBookings">
+                    {% for booking in cancelled_bookings %}
+                        {% include "accounts/partials/booking_card.html" with booking=booking allow_actions=False %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No cancelled bookings.
+            </div>
+        {% endif %}
+    </section>
 
 </div>
+
+<script>
+function scrollBookings(containerId, direction) {
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+        return;
+    }
+
+    const scrollAmount = 370;
+    container.scrollBy({
+        left: scrollAmount * direction,
+        behavior: "smooth"
+    });
+}
+</script>
 
 {% endblock %}

@@ -1,126 +1,72 @@
-from datetime import timedelta, timezone as dt_timezone
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.mail import EmailMessage
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-import resend
+import requests
 
 from services.models import NailService
 from .models import AvailabilitySlot, Booking
 
 
 def send_booking_email(booking, subject_prefix):
-    resend.api_key = getattr(settings, "RESEND_API_KEY", None)
+    relay_url = getattr(settings, "EMAIL_RELAY_URL", None)
+    relay_secret = getattr(settings, "EMAIL_RELAY_SECRET", None)
 
-    if not resend.api_key:
-        print("RESEND_API_KEY is missing. Email not sent.")
+    if not relay_url or not relay_secret:
+        print("Email relay is not configured. Email not sent.")
         return
 
     subject = f"{subject_prefix} - Nails by Lexia Booking"
 
-    body_text = f"""
-Booking Summary
+    payload = {
+        "subject": subject,
+        "customer_email": booking.client.email,
+        "admin_email": getattr(settings, "ADMIN_BOOKING_EMAIL", None),
 
-Client: {booking.client.username}
-Email: {booking.client.email}
-Phone: {booking.client.phone}
+        "client_name": booking.client.username,
+        "client_phone": booking.client.phone,
 
-Booking Type: {booking.get_booking_type_display()}
+        "booking_type": booking.get_booking_type_display(),
+        "booking_date": booking.start_time.strftime("%d %B %Y"),
+        "booking_time": f"{booking.start_time.strftime('%H:%M')} to {booking.end_time.strftime('%H:%M')}",
+        "duration_minutes": booking.total_duration_minutes,
+        "total_price": str(booking.total_price),
+        "payment": booking.get_payment_method_display(),
+        "status": booking.get_status_display(),
 
-Nail Service: {booking.nail_service.name if booking.nail_service else "Not selected"}
-Nail Colours: {booking.nail_colour_notes or "N/A"}
-Nail Vibe: {booking.nail_vibe_notes or "N/A"}
+        "nail_service": booking.nail_service.name if booking.nail_service else None,
+        "nail_colours": booking.nail_colour_notes or None,
+        "nail_vibe": booking.nail_vibe_notes or None,
 
-Toe Service: {booking.toe_service.name if booking.toe_service else "Not selected"}
-Toe Colours: {booking.toe_colour_notes or "N/A"}
-Toe Vibe: {booking.toe_vibe_notes or "N/A"}
-
-Date: {booking.start_time.strftime("%d %B %Y")}
-Time: {booking.start_time.strftime("%H:%M")} to {booking.end_time.strftime("%H:%M")}
-
-Total Duration: {booking.total_duration_minutes} minutes
-Total Price: €{booking.total_price}
-Payment: {booking.get_payment_method_display()}
-Status: {booking.get_status_display()}
-"""
-
-    body_html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 620px; margin: auto; background: #ffffff; border: 1px solid #eee; border-radius: 18px; overflow: hidden;">
-        <div style="background: #111; color: #fff; padding: 24px;">
-            <h1 style="margin: 0; font-size: 24px;">Nails by Lexia</h1>
-            <p style="margin: 8px 0 0; color: #ddd;">{subject_prefix}</p>
-        </div>
-
-        <div style="padding: 24px;">
-            <h2 style="margin-top: 0;">Booking Summary</h2>
-
-            <p><strong>Client:</strong> {booking.client.username}</p>
-            <p><strong>Email:</strong> {booking.client.email}</p>
-            <p><strong>Phone:</strong> {booking.client.phone}</p>
-
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-
-            <p><strong>Booking Type:</strong> {booking.get_booking_type_display()}</p>
-            <p><strong>Date:</strong> {booking.start_time.strftime("%d %B %Y")}</p>
-            <p><strong>Time:</strong> {booking.start_time.strftime("%H:%M")} to {booking.end_time.strftime("%H:%M")}</p>
-            <p><strong>Duration:</strong> {booking.total_duration_minutes} minutes</p>
-            <p><strong>Total Price:</strong> €{booking.total_price}</p>
-            <p><strong>Payment:</strong> {booking.get_payment_method_display()}</p>
-            <p><strong>Status:</strong> {booking.get_status_display()}</p>
-
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-
-            <h3>Services</h3>
-
-            <p><strong>Nails:</strong> {booking.nail_service.name if booking.nail_service else "Not selected"}</p>
-            <p><strong>Nail Colours:</strong> {booking.nail_colour_notes or "N/A"}</p>
-            <p><strong>Nail Vibe:</strong> {booking.nail_vibe_notes or "N/A"}</p>
-
-            <p><strong>Toes:</strong> {booking.toe_service.name if booking.toe_service else "Not selected"}</p>
-            <p><strong>Toe Colours:</strong> {booking.toe_colour_notes or "N/A"}</p>
-            <p><strong>Toe Vibe:</strong> {booking.toe_vibe_notes or "N/A"}</p>
-        </div>
-    </div>
-    """
-
-    admin_email = getattr(settings, "ADMIN_BOOKING_EMAIL", None)
-
-    recipients = []
-
-    if booking.client.email:
-        recipients.append(booking.client.email)
-
-    if admin_email:
-        recipients.append(admin_email)
-
-    if not recipients:
-        print("No recipients found. Email not sent.")
-        return
-
-    from_email = getattr(settings, "RESEND_FROM_EMAIL", "Nails by Lexia <onboarding@resend.dev>")
+        "toe_service": booking.toe_service.name if booking.toe_service else None,
+        "toe_colours": booking.toe_colour_notes or None,
+        "toe_vibe": booking.toe_vibe_notes or None,
+    }
 
     try:
-        resend.Emails.send({
-            "from": from_email,
-            "to": recipients,
-            "subject": subject,
-            "text": body_text,
-            "html": body_html,
-        })
+        response = requests.post(
+            relay_url,
+            json=payload,
+            headers={"X-Relay-Secret": relay_secret},
+            timeout=8,
+        )
+
+        if response.status_code >= 400:
+            print(f"Email relay failed: {response.status_code} - {response.text}")
+
     except Exception as e:
-        print(f"Resend email failed: {e}")
+        print(f"Email relay error: {e}")
 
 
 def get_available_slots(total_duration):
     available_slots = []
     now = timezone.now()
 
-    # Only check future availability
     availability_slots = list(
         AvailabilitySlot.objects.filter(
             active=True,
@@ -134,7 +80,6 @@ def get_available_slots(total_duration):
     earliest_start = min(slot.start_time for slot in availability_slots)
     latest_end = max(slot.end_time for slot in availability_slots)
 
-    # Load bookings ONCE, not inside every loop
     existing_bookings = list(
         Booking.objects.filter(
             status__in=["confirmed", "done"],
@@ -355,10 +300,26 @@ def edit_booking(request, booking_id):
         return redirect("account_dashboard")
 
     if request.method == "POST":
-        booking.nail_colour_notes = request.POST.get("nail_colour_notes", booking.nail_colour_notes).strip()
-        booking.nail_vibe_notes = request.POST.get("nail_vibe_notes", booking.nail_vibe_notes).strip()
-        booking.toe_colour_notes = request.POST.get("toe_colour_notes", booking.toe_colour_notes).strip()
-        booking.toe_vibe_notes = request.POST.get("toe_vibe_notes", booking.toe_vibe_notes).strip()
+        booking.nail_colour_notes = request.POST.get(
+            "nail_colour_notes",
+            booking.nail_colour_notes
+        ).strip()
+
+        booking.nail_vibe_notes = request.POST.get(
+            "nail_vibe_notes",
+            booking.nail_vibe_notes
+        ).strip()
+
+        booking.toe_colour_notes = request.POST.get(
+            "toe_colour_notes",
+            booking.toe_colour_notes
+        ).strip()
+
+        booking.toe_vibe_notes = request.POST.get(
+            "toe_vibe_notes",
+            booking.toe_vibe_notes
+        ).strip()
+
         booking.save()
 
         send_booking_email(booking, "Booking Updated")

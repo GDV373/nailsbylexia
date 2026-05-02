@@ -125,6 +125,8 @@ SOCIALACCOUNT_PROVIDERS = {
         "OAUTH_PKCE_ENABLED": True,
     }
 }
+EMAIL_RELAY_URL = os.environ.get("EMAIL_RELAY_URL")
+EMAIL_RELAY_SECRET = os.environ.get("EMAIL_RELAY_SECRET")
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Nails by Lexia <onboarding@resend.dev>")

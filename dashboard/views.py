@@ -24,8 +24,13 @@ def availability_builder(request):
     ]
 
     weekdays = [
-        (0, "Monday"), (1, "Tuesday"), (2, "Wednesday"),
-        (3, "Thursday"), (4, "Friday"), (5, "Saturday"), (6, "Sunday"),
+        (0, "Monday"),
+        (1, "Tuesday"),
+        (2, "Wednesday"),
+        (3, "Thursday"),
+        (4, "Friday"),
+        (5, "Saturday"),
+        (6, "Sunday"),
     ]
 
     if request.method == "POST":
@@ -126,6 +131,7 @@ def edit_availability(request, slot_id):
             datetime.combine(date_obj, time(start_hour, start_minute)),
             current_tz
         )
+
         end_dt = timezone.make_aware(
             datetime.combine(date_obj, time(end_hour, end_minute)),
             current_tz
@@ -172,13 +178,42 @@ def services_manager(request):
 @staff_member_required
 def add_service(request):
     if request.method == "POST":
+        service_area = request.POST.get("service_area")
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        duration_minutes = request.POST.get("duration_minutes")
+        price = request.POST.get("price")
+        active = request.POST.get("active") == "on"
+
+        if service_area not in ["nails", "toes"]:
+            messages.error(request, "Please choose a valid service area.")
+            return redirect("add_service")
+
+        if not name:
+            messages.error(request, "Please enter a service name.")
+            return redirect("add_service")
+
+        if len(description) < 10:
+            messages.error(request, "Please enter a service description of at least 10 characters.")
+            return redirect("add_service")
+
+        try:
+            duration_minutes = int(duration_minutes)
+        except (TypeError, ValueError):
+            messages.error(request, "Please enter a valid duration.")
+            return redirect("add_service")
+
+        if duration_minutes < 15:
+            messages.error(request, "Duration must be at least 15 minutes.")
+            return redirect("add_service")
+
         NailService.objects.create(
-            service_area=request.POST.get("service_area"),
-            name=request.POST.get("name"),
-            description=request.POST.get("description"),
-            duration_minutes=int(request.POST.get("duration_minutes")),
-            price=request.POST.get("price"),
-            active=request.POST.get("active") == "on",
+            service_area=service_area,
+            name=name,
+            description=description,
+            duration_minutes=duration_minutes,
+            price=price,
+            active=active,
         )
 
         messages.success(request, "Service added.")
@@ -195,12 +230,41 @@ def edit_service(request, service_id):
     service = get_object_or_404(NailService, id=service_id)
 
     if request.method == "POST":
-        service.service_area = request.POST.get("service_area")
-        service.name = request.POST.get("name")
-        service.description = request.POST.get("description")
-        service.duration_minutes = int(request.POST.get("duration_minutes"))
-        service.price = request.POST.get("price")
-        service.active = request.POST.get("active") == "on"
+        service_area = request.POST.get("service_area")
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        duration_minutes = request.POST.get("duration_minutes")
+        price = request.POST.get("price")
+        active = request.POST.get("active") == "on"
+
+        if service_area not in ["nails", "toes"]:
+            messages.error(request, "Please choose a valid service area.")
+            return redirect("edit_service", service_id=service.id)
+
+        if not name:
+            messages.error(request, "Please enter a service name.")
+            return redirect("edit_service", service_id=service.id)
+
+        if len(description) < 10:
+            messages.error(request, "Please enter a service description of at least 10 characters.")
+            return redirect("edit_service", service_id=service.id)
+
+        try:
+            duration_minutes = int(duration_minutes)
+        except (TypeError, ValueError):
+            messages.error(request, "Please enter a valid duration.")
+            return redirect("edit_service", service_id=service.id)
+
+        if duration_minutes < 15:
+            messages.error(request, "Duration must be at least 15 minutes.")
+            return redirect("edit_service", service_id=service.id)
+
+        service.service_area = service_area
+        service.name = name
+        service.description = description
+        service.duration_minutes = duration_minutes
+        service.price = price
+        service.active = active
         service.save()
 
         messages.success(request, "Service updated.")
@@ -227,11 +291,11 @@ def delete_service(request, service_id):
 @staff_member_required
 def seed_default_services(request):
     items = [
-        ("nails", "Gel-X", "Full cover soft gel extensions.", 120, 20),
-        ("nails", "Gelish", "Gel polish on natural nails.", 90, 30),
-        ("nails", "BIAB / Builder Gel", "Builder gel overlay for strength.", 120, 35),
-        ("nails", "Acrylic", "Strong extensions with custom shape.", 150, 40),
-        ("toes", "Toes Gelish", "Gel polish for toes.", 60, 20),
+        ("nails", "Gel-X", "Full cover soft gel extensions for a clean and long-lasting set.", 120, 20),
+        ("nails", "Gelish", "Gel polish on natural nails with a glossy finish.", 90, 30),
+        ("nails", "BIAB / Builder Gel", "Builder gel overlay for strength and natural nail growth.", 120, 35),
+        ("nails", "Acrylic", "Strong nail extensions with custom shape and finish.", 150, 40),
+        ("toes", "Toes Gelish", "Gel polish service for toes.", 60, 20),
         ("toes", "Toes Basic Polish", "Simple toe polish finish.", 45, 15),
         ("toes", "Toes With Art", "Toe polish with simple nail art.", 75, 25),
     ]

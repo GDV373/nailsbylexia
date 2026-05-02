@@ -2,42 +2,170 @@
 
 {% block content %}
 
-<div class="container py-5">
-    <h1 class="mb-4">Our Services</h1>
+<style>
+    .services-hero {
+        background: linear-gradient(135deg, #fff7fb 0%, #ffffff 55%, #f8f1f4 100%);
+        padding: 70px 0;
+    }
 
-    <div class="row g-4">
+    .service-card {
+        border-radius: 24px;
+        border: 0;
+        transition: 0.2s ease;
+        height: 100%;
+    }
 
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h4>Gel Polish</h4>
-                    <p>Simple gel polish service.</p>
-                    <p class="fw-bold">From €20</p>
-                </div>
+    .service-card:hover {
+        transform: translateY(-4px);
+    }
+
+    .service-area-badge {
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        background: #f8f1f4;
+        color: #111;
+        font-weight: 600;
+    }
+
+    .custom-card {
+        border-radius: 28px;
+        border: 0;
+        background: #111;
+        color: white;
+    }
+
+    .custom-card p {
+        color: #ddd;
+    }
+
+    .price-pill {
+        background: #111;
+        color: white;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-weight: 700;
+        display: inline-block;
+    }
+
+    .duration-pill {
+        background: #f8f9fa;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-weight: 600;
+        display: inline-block;
+    }
+</style>
+
+
+<section class="services-hero">
+    <div class="container text-center">
+        <h1 class="fw-bold display-5 mb-3">Our Services</h1>
+        <p class="text-muted mb-4">
+            Choose nails, toes, or both. Prices and durations are updated by the admin.
+        </p>
+
+        <a href="{% url 'create_booking' %}" class="btn btn-dark btn-lg px-5">
+            Book Appointment
+        </a>
+    </div>
+</section>
+
+
+<section class="py-5">
+    <div class="container">
+
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">Nail Services</h2>
+                <p class="text-muted mb-0">Available nail treatments and extensions.</p>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h4>Gelish</h4>
-                    <p>Professional gelish finish with colour options.</p>
-                    <p class="fw-bold">From €20</p>
-                </div>
+        {% if nail_services %}
+            <div class="row g-4 mb-5">
+                {% for service in nail_services %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card shadow-sm service-card">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                    <h4 class="fw-bold mb-0">{{ service.name }}</h4>
+                                    <span class="service-area-badge">Nails</span>
+                                </div>
+
+                                <p class="text-muted">
+                                    {{ service.description }}
+                                </p>
+
+                                <div class="d-flex flex-wrap gap-2 mt-4">
+                                    <span class="price-pill">€{{ service.price }}</span>
+                                    <span class="duration-pill">{{ service.duration_minutes }} mins</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-5">
+                No nail services are currently available.
+            </div>
+        {% endif %}
+
+
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">Toe Services</h2>
+                <p class="text-muted mb-0">Available toe and gel polish services.</p>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h4>Custom Nail Art</h4>
-                    <p>Detailed custom design based on your selected style.</p>
-                    <p class="fw-bold">Price depends on design</p>
-                </div>
+        {% if toe_services %}
+            <div class="row g-4 mb-5">
+                {% for service in toe_services %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card shadow-sm service-card">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                    <h4 class="fw-bold mb-0">{{ service.name }}</h4>
+                                    <span class="service-area-badge">Toes</span>
+                                </div>
+
+                                <p class="text-muted">
+                                    {{ service.description }}
+                                </p>
+
+                                <div class="d-flex flex-wrap gap-2 mt-4">
+                                    <span class="price-pill">€{{ service.price }}</span>
+                                    <span class="duration-pill">{{ service.duration_minutes }} mins</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-5">
+                No toe services are currently available.
+            </div>
+        {% endif %}
+
+
+        <div class="card custom-card shadow-lg">
+            <div class="card-body p-4 p-md-5 text-center">
+                <h2 class="fw-bold mb-3">Custom Nail Art</h2>
+                <p class="mb-4">
+                    Want something unique? Bring your colour ideas, inspo photo, theme, or event vibe.
+                    You can describe exactly what you want during booking.
+                </p>
+
+                <a href="{% url 'create_booking' %}" class="btn btn-light btn-lg px-5">
+                    Book Custom Vibe
+                </a>
             </div>
         </div>
 
     </div>
-</div>
+</section>
 
 {% endblock %}

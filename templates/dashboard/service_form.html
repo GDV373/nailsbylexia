@@ -2,57 +2,226 @@
 
 {% block content %}
 
+<style>
+    .service-form-card {
+        max-width: 780px;
+        border-radius: 26px;
+        border: 0;
+    }
+
+    .form-helper {
+        font-size: 0.85rem;
+    }
+
+    .preview-box {
+        border-radius: 18px;
+        background: #f8f9fa;
+        border: 1px solid #eee;
+        padding: 18px;
+    }
+
+    .price-preview {
+        background: #111;
+        color: white;
+        border-radius: 999px;
+        padding: 7px 13px;
+        font-weight: 700;
+        display: inline-block;
+    }
+
+    .duration-preview {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 999px;
+        padding: 7px 13px;
+        font-weight: 600;
+        display: inline-block;
+    }
+</style>
+
 <div class="container py-5">
 
-    <div class="card shadow-sm border-0 mx-auto" style="max-width: 750px; border-radius: 24px;">
+    <div class="card shadow-sm service-form-card mx-auto">
         <div class="card-body p-4 p-md-5">
 
-            <h1 class="fw-bold mb-4">{{ title }}</h1>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+                <div>
+                    <h1 class="fw-bold mb-1">{{ title }}</h1>
+                    <p class="text-muted mb-0">
+                        This service will appear on the public Our Services page and in the booking form.
+                    </p>
+                </div>
 
-            <form method="post">
+                <a href="{% url 'services_manager' %}" class="btn btn-outline-dark mt-3 mt-md-0">
+                    Back to Services
+                </a>
+            </div>
+
+            <form method="post" id="serviceForm">
                 {% csrf_token %}
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Service Area</label>
-                    <select name="service_area" class="form-select form-select-lg" required>
-                        <option value="nails" {% if service and service.service_area == "nails" %}selected{% endif %}>Nails</option>
-                        <option value="toes" {% if service and service.service_area == "toes" %}selected{% endif %}>Toes</option>
+                    <select name="service_area" id="serviceArea" class="form-select form-select-lg" required>
+                        <option value="nails" {% if service and service.service_area == "nails" %}selected{% endif %}>
+                            Nails
+                        </option>
+                        <option value="toes" {% if service and service.service_area == "toes" %}selected{% endif %}>
+                            Toes
+                        </option>
                     </select>
+                    <small class="text-muted form-helper">
+                        Choose whether this service belongs under Nails or Toes.
+                    </small>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Service Name</label>
-                    <input type="text" name="name" class="form-control form-control-lg" value="{{ service.name|default:'' }}" required>
+                    <input
+                        type="text"
+                        name="name"
+                        id="serviceName"
+                        class="form-control form-control-lg"
+                        value="{{ service.name|default:'' }}"
+                        placeholder="Example: Gel-X, Gelish, BIAB, Toes Gelish"
+                        required
+                    >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Description</label>
-                    <textarea name="description" class="form-control" rows="4" required>{{ service.description|default:'' }}</textarea>
+                    <textarea
+                        name="description"
+                        id="serviceDescription"
+                        class="form-control"
+                        rows="4"
+                        required
+                        minlength="10"
+                        placeholder="Write a short description customers will see on the services page."
+                    >{{ service.description|default:'' }}</textarea>
+                    <small class="text-muted form-helper">
+                        Required. Minimum 10 characters. This appears on the public Our Services page.
+                    </small>
                 </div>
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Duration Minutes</label>
-                        <input type="number" name="duration_minutes" class="form-control form-control-lg" value="{{ service.duration_minutes|default:60 }}" min="15" step="15" required>
+                        <input
+                            type="number"
+                            name="duration_minutes"
+                            id="serviceDuration"
+                            class="form-control form-control-lg"
+                            value="{{ service.duration_minutes|default:60 }}"
+                            min="15"
+                            step="15"
+                            required
+                        >
+                        <small class="text-muted form-helper">
+                            Use 15-minute steps, for example 45, 60, 90, 120.
+                        </small>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Price €</label>
-                        <input type="number" name="price" class="form-control form-control-lg" value="{{ service.price|default:0 }}" min="0" step="0.01" required>
+                        <input
+                            type="number"
+                            name="price"
+                            id="servicePrice"
+                            class="form-control form-control-lg"
+                            value="{{ service.price|default:0 }}"
+                            min="0"
+                            step="0.01"
+                            required
+                        >
                     </div>
                 </div>
 
                 <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" name="active" id="active" {% if not service or service.active %}checked{% endif %}>
-                    <label class="form-check-label" for="active">Active</label>
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="active"
+                        id="active"
+                        {% if not service or service.active %}checked{% endif %}
+                    >
+                    <label class="form-check-label" for="active">
+                        Active — show this service to customers
+                    </label>
                 </div>
 
-                <button class="btn btn-dark btn-lg w-100" type="submit">Save Service</button>
+                <div class="preview-box mb-4">
+                    <p class="fw-bold mb-2">Customer Preview</p>
+
+                    <h4 class="fw-bold mb-2" id="previewName">
+                        {{ service.name|default:"Service name" }}
+                    </h4>
+
+                    <p class="text-muted mb-3" id="previewDescription">
+                        {{ service.description|default:"Service description will appear here." }}
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="price-preview">
+                            €<span id="previewPrice">{{ service.price|default:"0" }}</span>
+                        </span>
+
+                        <span class="duration-preview">
+                            <span id="previewDuration">{{ service.duration_minutes|default:"60" }}</span> mins
+                        </span>
+
+                        <span class="duration-preview">
+                            <span id="previewArea">
+                                {% if service and service.service_area == "toes" %}
+                                    Toes
+                                {% else %}
+                                    Nails
+                                {% endif %}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <button class="btn btn-dark btn-lg w-100" type="submit">
+                    Save Service
+                </button>
             </form>
 
         </div>
     </div>
 
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const serviceArea = document.getElementById("serviceArea");
+    const serviceName = document.getElementById("serviceName");
+    const serviceDescription = document.getElementById("serviceDescription");
+    const serviceDuration = document.getElementById("serviceDuration");
+    const servicePrice = document.getElementById("servicePrice");
+
+    const previewArea = document.getElementById("previewArea");
+    const previewName = document.getElementById("previewName");
+    const previewDescription = document.getElementById("previewDescription");
+    const previewDuration = document.getElementById("previewDuration");
+    const previewPrice = document.getElementById("previewPrice");
+
+    function updatePreview() {
+        previewArea.textContent = serviceArea.value === "toes" ? "Toes" : "Nails";
+        previewName.textContent = serviceName.value.trim() || "Service name";
+        previewDescription.textContent = serviceDescription.value.trim() || "Service description will appear here.";
+        previewDuration.textContent = serviceDuration.value || "60";
+        previewPrice.textContent = servicePrice.value || "0";
+    }
+
+    serviceArea.addEventListener("change", updatePreview);
+    serviceName.addEventListener("input", updatePreview);
+    serviceDescription.addEventListener("input", updatePreview);
+    serviceDuration.addEventListener("input", updatePreview);
+    servicePrice.addEventListener("input", updatePreview);
+
+    updatePreview();
+});
+</script>
 
 {% endblock %}

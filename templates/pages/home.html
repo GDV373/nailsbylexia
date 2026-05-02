@@ -2,54 +2,245 @@
 
 {% block content %}
 
-<section class="py-5 text-center bg-body-tertiary">
-    <div class="container">
-        <h1 class="display-5 fw-bold">Beautiful Nails, Simple Booking</h1>
-        <p class="lead mt-3">
-            Book your nail or toe art appointment online and choose the service that fits you best.
-        </p>
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #fff7fb 0%, #ffffff 55%, #f8f1f4 100%);
+        padding: 90px 0;
+    }
 
-        <div class="mt-4">
-            <a href="{% url 'create_booking' %}" class="btn btn-dark btn-lg">
-                Book Appointment
-            </a>
-            <a href="{% url 'services_page' %}" class="btn btn-outline-dark btn-lg ms-2">
-                View Services
-            </a>
+    .hero-card {
+        border-radius: 32px;
+        border: 0;
+        background: #111;
+        color: white;
+        overflow: hidden;
+    }
+
+    .hero-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        margin-bottom: 18px;
+    }
+
+    .hero-title {
+        font-size: clamp(2.4rem, 5vw, 4.5rem);
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -1px;
+    }
+
+    .hero-text {
+        color: #e3e3e3;
+        font-size: 1.1rem;
+        max-width: 560px;
+    }
+
+    .hero-icon {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 54px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .section-title {
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    .instagram-section {
+        background: #fff;
+        padding: 70px 0;
+    }
+
+    .instagram-shell {
+        border-radius: 32px;
+        background: #fff;
+        border: 1px solid #eee;
+        box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.06);
+        padding: 28px;
+        overflow: hidden;
+    }
+
+    .service-mini-card {
+        border-radius: 22px;
+        border: 0;
+        background: #f8f9fa;
+        transition: 0.2s ease;
+        height: 100%;
+    }
+
+    .service-mini-card:hover {
+        transform: translateY(-4px);
+        background: #f8f1f4;
+    }
+
+    .cta-section {
+        background: #111;
+        color: white;
+        padding: 70px 0;
+    }
+
+    .cta-section p {
+        color: #ddd;
+    }
+
+    @media (max-width: 768px) {
+        .hero-section {
+            padding: 55px 0;
+        }
+
+        .instagram-shell {
+            padding: 14px;
+            border-radius: 24px;
+        }
+    }
+</style>
+
+
+<!-- HERO -->
+<section class="hero-section">
+    <div class="container">
+        <div class="card hero-card shadow-lg">
+            <div class="card-body p-4 p-md-5">
+                <div class="row align-items-center g-5">
+
+                    <div class="col-lg-7">
+                        <span class="hero-badge">Luxury nails · Malta</span>
+
+                        <h1 class="hero-title mb-4">
+                            Nails by Lexia
+                        </h1>
+
+                        <p class="hero-text mb-4">
+                            Beautiful gel polish, nail art, Gel-X and toe services with a simple online booking experience.
+                        </p>
+
+                        <div class="d-flex flex-column flex-sm-row gap-3">
+                            <a href="{% url 'create_booking' %}" class="btn btn-light btn-lg px-4">
+                                Book Appointment
+                            </a>
+
+                            <a href="{% url 'services_page' %}" class="btn btn-outline-light btn-lg px-4">
+                                View Services
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5 text-center">
+                        <div class="hero-icon">
+                            💅
+                        </div>
+
+                        <h4 class="mt-4 mb-2">Fresh sets, clean finish</h4>
+                        <p class="mb-0 text-white-50">
+                            Pick your service, tell us your colour/vibe, and choose your time.
+                        </p>
+                    </div>
+
+                </div>
+            </div>
         </div>
     </div>
 </section>
 
-<section class="container py-5">
-    <div class="row g-4 text-center">
 
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <h4>Gel Polish</h4>
-                    <p>Clean, glossy and long-lasting gel polish designs.</p>
-                </div>
-            </div>
+<!-- INSTAGRAM CAROUSEL -->
+<section class="instagram-section">
+    <div class="container">
+
+        <div class="text-center mb-5">
+            <h2 class="section-title">Latest Work</h2>
+            <p class="text-muted mb-0">
+                Fresh designs and nail inspiration from Instagram.
+            </p>
         </div>
 
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <h4>Nail Art</h4>
-                    <p>Custom colours, designs, mood boards and creative art.</p>
-                </div>
-            </div>
+        <div class="instagram-shell">
+            <!-- Elfsight Instagram Feed | Nails by Lexia -->
+            <script src="https://elfsightcdn.com/platform.js" async></script>
+            <div class="elfsight-app-bdfe3d21-27fd-4d86-b625-c38cbd6d768e" data-elfsight-app-lazy></div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body">
-                    <h4>Easy Booking</h4>
-                    <p>Choose a service and only available times will be shown.</p>
-                </div>
-            </div>
+    </div>
+</section>
+
+
+<!-- QUICK SERVICES -->
+<section class="py-5 bg-light">
+    <div class="container">
+
+        <div class="text-center mb-5">
+            <h2 class="section-title">What You Can Book</h2>
+            <p class="text-muted mb-0">
+                Choose nails, toes, or both — then add your colours and vibe.
+            </p>
         </div>
 
+        <div class="row g-4">
+
+            <div class="col-md-4">
+                <div class="card service-mini-card shadow-sm">
+                    <div class="card-body p-4 text-center">
+                        <div class="fs-1 mb-3">💅</div>
+                        <h4 class="fw-bold">Nails</h4>
+                        <p class="text-muted mb-0">
+                            Gel-X, Gelish, BIAB, acrylic and custom nail art services.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card service-mini-card shadow-sm">
+                    <div class="card-body p-4 text-center">
+                        <div class="fs-1 mb-3">🦶</div>
+                        <h4 class="fw-bold">Toes</h4>
+                        <p class="text-muted mb-0">
+                            Toe polish and toe gel services for a clean matching finish.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card service-mini-card shadow-sm">
+                    <div class="card-body p-4 text-center">
+                        <div class="fs-1 mb-3">✨</div>
+                        <h4 class="fw-bold">Custom Vibe</h4>
+                        <p class="text-muted mb-0">
+                            Tell us your colour ideas, design style, event or free-style vibe.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-3">Ready for your next set?</h2>
+        <p class="mb-4">
+            Book online and receive your appointment confirmation by email.
+        </p>
+
+        <a href="{% url 'create_booking' %}" class="btn btn-light btn-lg px-5">
+            Book Now
+        </a>
     </div>
 </section>
 

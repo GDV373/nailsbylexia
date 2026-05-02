@@ -1,0 +1,87 @@
+<div class="card shadow-sm admin-booking-card h-100 {% if highlight and booking.status == 'confirmed' %}booking-today{% endif %}">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <h5 class="fw-bold mb-0">
+                    {{ booking.client.email|default:booking.client.username }}
+                </h5>
+                <small class="text-muted">
+                    {{ booking.client.phone|default:"No phone" }}
+                </small>
+            </div>
+
+            {% if booking.status == "cancelled" %}
+                <span class="badge bg-danger">
+                    {{ booking.get_status_display }}
+                </span>
+            {% elif booking.status == "done" %}
+                <span class="badge bg-success">
+                    {{ booking.get_status_display }}
+                </span>
+            {% else %}
+                <span class="badge bg-dark">
+                    {{ booking.get_status_display }}
+                </span>
+            {% endif %}
+        </div>
+
+        <hr>
+
+        <p class="mb-1">
+            <strong>Type:</strong> {{ booking.get_booking_type_display }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Date:</strong> {{ booking.start_time|date:"D d M Y" }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Time:</strong> {{ booking.start_time|date:"H:i" }} → {{ booking.end_time|date:"H:i" }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Duration:</strong> {{ booking.total_duration_minutes }} mins
+        </p>
+
+        <p class="mb-3">
+            <strong>Total:</strong> €{{ booking.total_price }}
+        </p>
+
+        {% if booking.nail_service %}
+            <div class="mb-3">
+                <p class="fw-semibold mb-1">💅 Nails</p>
+                <p class="mb-1">{{ booking.nail_service.name }}</p>
+                <small class="text-muted d-block">
+                    Colours: {{ booking.nail_colour_notes|default:"-" }}
+                </small>
+                <small class="text-muted">
+                    Vibe: {{ booking.nail_vibe_notes|default:"-" }}
+                </small>
+            </div>
+        {% endif %}
+
+        {% if booking.toe_service %}
+            <div class="mb-3">
+                <p class="fw-semibold mb-1">🦶 Toes</p>
+                <p class="mb-1">{{ booking.toe_service.name }}</p>
+                <small class="text-muted d-block">
+                    Colours: {{ booking.toe_colour_notes|default:"-" }}
+                </small>
+                <small class="text-muted">
+                    Vibe: {{ booking.toe_vibe_notes|default:"-" }}
+                </small>
+            </div>
+        {% endif %}
+
+        {% if booking.status == "confirmed" %}
+            <form method="post" action="{% url 'complete_booking' booking.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success w-100">
+                    Mark Complete
+                </button>
+            </form>
+        {% endif %}
+
+    </div>
+</div>

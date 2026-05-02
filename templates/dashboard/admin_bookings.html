@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .admin-booking-card {
+        border-radius: 22px;
+        border: 0;
+        transition: 0.2s ease;
+        min-width: 360px;
+        max-width: 360px;
+    }
+
+    .admin-booking-card:hover {
+        transform: translateY(-3px);
+    }
+
+    .booking-today {
+        background: #d8f8e6;
+        border: 1px solid #a4e7c0;
+    }
+
+    .booking-scroll {
+        display: flex;
+        gap: 18px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        padding: 6px 4px 18px;
+    }
+
+    .booking-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .booking-scroll::-webkit-scrollbar-thumb {
+        background: #bbb;
+        border-radius: 20px;
+    }
+
+    .scroll-btn {
+        border-radius: 999px;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+    }
+
+    .section-card {
+        border-radius: 24px;
+        border: 0;
+    }
+
+    .empty-box {
+        border-radius: 18px;
+        background: #f8f9fa;
+        padding: 18px;
+        color: #666;
+    }
+
+    @media (max-width: 576px) {
+        .admin-booking-card {
+            min-width: 88vw;
+            max-width: 88vw;
+        }
+    }
+</style>
+
+<div class="container py-5">
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">Manage My Bookings</h1>
+            <p class="text-muted mb-0">
+                View all customer bookings, check a particular day, and mark appointments complete.
+            </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
+            <a href="{% url 'availability_builder' %}" class="btn btn-outline-dark">
+                Availability
+            </a>
+            <a href="{% url 'services_manager' %}" class="btn btn-outline-dark">
+                Services
+            </a>
+            <a href="{% url 'admin_users' %}" class="btn btn-outline-dark">
+                Users
+            </a>
+        </div>
+    </div>
+
+    <!-- DATE FILTER -->
+    <div class="card shadow-sm section-card mb-5">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">View bookings for a particular day</label>
+                    <input
+                        type="date"
+                        name="date"
+                        class="form-control form-control-lg"
+                        value="{{ selected_date|date:'Y-m-d' }}"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-dark btn-lg w-100">
+                        View Day
+                    </button>
+                </div>
+
+                <div class="col-md-3">
+                    <a href="{% url 'admin_bookings' %}" class="btn btn-outline-dark btn-lg w-100">
+                        Today
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- SELECTED DAY BOOKINGS -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">
+                    Bookings for {{ selected_date|date:"D d M Y" }}
+                </h2>
+                <p class="text-muted mb-0">
+                    Mint green cards are active bookings for this selected day.
+                </p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('dayBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('dayBookings', 1)">›</button>
+            </div>
+        </div>
+
+        {% if selected_day_bookings %}
+            <div class="booking-scroll" id="dayBookings">
+                {% for booking in selected_day_bookings %}
+                    {% include "dashboard/partials/admin_booking_card.html" with booking=booking highlight=True %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No bookings found for this day.
+            </div>
+        {% endif %}
+    </section>
+
+
+    <!-- UPCOMING BOOKINGS -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">Upcoming Bookings</h2>
+                <p class="text-muted mb-0">
+                    All active future appointments across all customers.
+                </p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('upcomingBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('upcomingBookings', 1)">›</button>
+            </div>
+        </div>
+
+        {% if upcoming_bookings %}
+            <div class="booking-scroll" id="upcomingBookings">
+                {% for booking in upcoming_bookings %}
+                    {% include "dashboard/partials/admin_booking_card.html" with booking=booking highlight=False %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No upcoming bookings.
+            </div>
+        {% endif %}
+    </section>
+
+
+    <!-- COMPLETED BOOKINGS -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">Completed Bookings</h2>
+                <p class="text-muted mb-0">
+                    Recently completed appointments.
+                </p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('completedBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('completedBookings', 1)">›</button>
+            </div>
+        </div>
+
+        {% if completed_bookings %}
+            <div class="booking-scroll" id="completedBookings">
+                {% for booking in completed_bookings %}
+                    {% include "dashboard/partials/admin_booking_card.html" with booking=booking highlight=False %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No completed bookings yet.
+            </div>
+        {% endif %}
+    </section>
+
+
+    <!-- CANCELLED BOOKINGS -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">Cancelled Bookings</h2>
+                <p class="text-muted mb-0">
+                    Recently cancelled appointments.
+                </p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('cancelledBookings', -1)">‹</button>
+                <button type="button" class="btn btn-outline-dark scroll-btn" onclick="scrollBookings('cancelledBookings', 1)">›</button>
+            </div>
+        </div>
+
+        {% if cancelled_bookings %}
+            <div class="booking-scroll" id="cancelledBookings">
+                {% for booking in cancelled_bookings %}
+                    {% include "dashboard/partials/admin_booking_card.html" with booking=booking highlight=False %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No cancelled bookings.
+            </div>
+        {% endif %}
+    </section>
+
+</div>
+
+<script>
+function scrollBookings(containerId, direction) {
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+        return;
+    }
+
+    container.scrollBy({
+        left: 390 * direction,
+        behavior: "smooth"
+    });
+}
+</script>
+
+{% endblock %}

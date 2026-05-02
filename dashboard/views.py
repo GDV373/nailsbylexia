@@ -7,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from bookings.models import AvailabilitySlot
+from bookings.models import AvailabilitySlot, Booking
+from bookings.views import send_booking_email
 from services.models import NailService
 
 
@@ -303,3 +304,74 @@ def toggle_user_superuser(request, user_id):
         messages.success(request, "Superuser access updated.")
 
     return redirect("admin_users")
+
+
+@staff_member_required
+def admin_bookings(request):
+    selected_date_raw = request.GET.get("date")
+    today = timezone.localdate()
+
+    if selected_date_raw:
+        try:
+            selected_date = datetime.strptime(selected_date_raw, "%Y-%m-%d").date()
+        except ValueError:
+            selected_date = today
+    else:
+        selected_date = today
+
+    all_bookings = Booking.objects.select_related(
+        "client",
+        "nail_service",
+        "toe_service",
+    ).order_by("start_time")
+
+    upcoming_bookings = all_bookings.filter(
+        status="confirmed",
+        start_time__gte=timezone.now(),
+    ).order_by("start_time")
+
+    selected_day_bookings = all_bookings.filter(
+        start_time__date=selected_date
+    ).order_by("start_time")
+
+    completed_bookings = all_bookings.filter(
+        status="done"
+    ).order_by("-start_time")[:30]
+
+    cancelled_bookings = all_bookings.filter(
+        status="cancelled"
+    ).order_by("-start_time")[:30]
+
+    return render(request, "dashboard/admin_bookings.html", {
+        "selected_date": selected_date,
+        "today": today,
+        "upcoming_bookings": upcoming_bookings,
+        "selected_day_bookings": selected_day_bookings,
+        "completed_bookings": completed_bookings,
+        "cancelled_bookings": cancelled_bookings,
+    })
+
+
+@staff_member_required
+def complete_booking(request, booking_id):
+    booking = get_object_or_404(
+        Booking.objects.select_related("client", "nail_service", "toe_service"),
+        id=booking_id,
+    )
+
+    if request.method == "POST":
+        if booking.status == "cancelled":
+            messages.error(request, "Cancelled bookings cannot be completed.")
+            return redirect("admin_bookings")
+
+        booking.status = "done"
+        booking.save()
+
+        send_booking_email(booking, "Thank You - Booking Completed")
+
+        messages.success(
+            request,
+            f"Booking for {booking.client.email or booking.client.username} marked as complete."
+        )
+
+    return redirect("admin_bookings")

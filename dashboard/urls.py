@@ -16,4 +16,7 @@ urlpatterns = [
     path("users/<int:user_id>/toggle-staff/", views.toggle_user_staff, name="toggle_user_staff"),
     path("users/<int:user_id>/toggle-active/", views.toggle_user_active, name="toggle_user_active"),
     path("users/<int:user_id>/toggle-superuser/", views.toggle_user_superuser, name="toggle_user_superuser"),
+
+    path("bookings/", views.admin_bookings, name="admin_bookings"),
+    path("bookings/<int:booking_id>/complete/", views.complete_booking, name="complete_booking"),
 ]

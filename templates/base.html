@@ -55,8 +55,18 @@
 
                     {% if user.is_staff %}
                         <li class="nav-item">
-                            <a class="btn btn-dark ms-lg-3 mt-2 mt-lg-0" href="{% url 'availability_builder' %}">
-                                Admin Dashboard
+                            <a
+                                class="btn ms-lg-3 mt-2 mt-lg-0 text-white"
+                                style="background: linear-gradient(135deg, #7c3aed, #c084fc); border: 0;"
+                                href="{% url 'admin_bookings' %}"
+                            >
+                                Manage My Bookings
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="btn btn-dark ms-lg-2 mt-2 mt-lg-0" href="{% url 'availability_builder' %}">
+                                Admin Tools
                             </a>
                         </li>
                     {% endif %}

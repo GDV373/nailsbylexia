@@ -25,6 +25,15 @@ def send_booking_email(booking, subject_prefix):
 
     payload = {
         "subject": subject,
+        "booking_id": booking.id,
+        "email_action": subject_prefix,
+        "calendar_uid": f"booking-{booking.id}@nailsbylexia.local",
+        "calendar_method": "CANCEL" if booking.status == "cancelled" else "REQUEST",
+        "calendar_status": "CANCELLED" if booking.status == "cancelled" else "CONFIRMED",
+        "calendar_sequence": 2 if booking.status == "cancelled" else (1 if "Updated" in subject_prefix else 0),
+        "start_iso": booking.start_time.isoformat(),
+        "end_iso": booking.end_time.isoformat(),
+
         "customer_email": booking.client.email,
         "admin_email": getattr(settings, "ADMIN_BOOKING_EMAIL", None),
 

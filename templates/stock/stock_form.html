@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .stock-form-hero {
+        background: linear-gradient(135deg, #ffe4f1 0%, #fff7fb 60%, #ffffff 100%);
+        padding: 40px 0;
+        border-bottom: 1px solid #f6c6dc;
+    }
+
+    .stock-form-card {
+        max-width: 980px;
+        border-radius: 28px;
+        border: 0;
+    }
+
+    .pink-btn {
+        background: linear-gradient(135deg, #ec4899, #f472b6);
+        border: 0;
+        color: white;
+    }
+
+    .pink-btn:hover {
+        color: white;
+        filter: brightness(0.96);
+    }
+
+    .preview-box {
+        border-radius: 22px;
+        background: #fff7fb;
+        border: 1px solid #fbcfe8;
+        padding: 20px;
+    }
+
+    .form-helper {
+        font-size: 0.85rem;
+    }
+</style>
+
+<section class="stock-form-hero">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <h1 class="fw-bold mb-1">{{ title }}</h1>
+                <p class="text-muted mb-0">
+                    Track products and equipment used to perform services.
+                </p>
+            </div>
+
+            <a href="{% url 'manage_stock' %}" class="btn btn-outline-dark btn-lg">
+                Back to Stock
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="container py-5">
+
+    <div class="card shadow-sm stock-form-card mx-auto">
+        <div class="card-body p-4 p-md-5">
+
+            <form method="post" id="stockForm">
+                {% csrf_token %}
+
+                <div class="row g-4">
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Barcode / EAN</label>
+                        <input
+                            type="text"
+                            name="barcode"
+                            id="barcode"
+                            class="form-control form-control-lg"
+                            value="{% if item %}{{ item.barcode|default:'' }}{% else %}{{ barcode_prefill }}{% endif %}"
+                            placeholder="Scan or type barcode"
+                        >
+                        <small class="text-muted form-helper">
+                            Leave blank if the product has no barcode.
+                        </small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Brand</label>
+                        <input
+                            type="text"
+                            name="brand"
+                            id="brand"
+                            class="form-control form-control-lg"
+                            value="{{ item.brand|default:'' }}"
+                            placeholder="Example: BORN PRETTY, GUIBOFU"
+                        >
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Product Name</label>
+                        <input
+                            type="text"
+                            name="product_name"
+                            id="productName"
+                            class="form-control form-control-lg"
+                            value="{{ item.product_name|default:'' }}"
+                            placeholder="Example: 10ml Flow Light White Cat Magnetic Gel Nail Polish"
+                            required
+                        >
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Colour Name</label>
+                        <input
+                            type="text"
+                            name="colour_name"
+                            id="colourName"
+                            class="form-control"
+                            value="{{ item.colour_name|default:'' }}"
+                            placeholder="Example: Yellow, Light White Cat, Nude Pink"
+                        >
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Shade / Colour Code</label>
+                        <input
+                            type="text"
+                            name="shade_code"
+                            id="shadeCode"
+                            class="form-control"
+                            value="{{ item.shade_code|default:'' }}"
+                            placeholder="Example: 1578, BP-04"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Item Type</label>
+                        <select name="item_type" id="itemType" class="form-select">
+                            {% for value, label in item_type_choices %}
+                                <option value="{{ value }}" {% if item and item.item_type == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Category</label>
+                        <select name="category" id="category" class="form-select">
+                            {% for value, label in category_choices %}
+                                <option value="{{ value }}" {% if item and item.category == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Unit Type</label>
+                        <select name="unit_type" id="unitType" class="form-select">
+                            {% for value, label in unit_type_choices %}
+                                <option value="{{ value }}" {% if item and item.unit_type == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Size / Volume</label>
+                        <input
+                            type="number"
+                            name="size_value"
+                            id="sizeValue"
+                            class="form-control"
+                            value="{{ item.size_value|default:'' }}"
+                            min="0"
+                            step="0.01"
+                            placeholder="10"
+                        >
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Size Unit</label>
+                        <select name="size_unit" id="sizeUnit" class="form-select">
+                            {% for value, label in size_unit_choices %}
+                                <option value="{{ value }}" {% if item and item.size_unit == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Quantity In Stock</label>
+                        <input
+                            type="number"
+                            name="quantity_in_stock"
+                            id="quantityInStock"
+                            class="form-control"
+                            value="{{ item.quantity_in_stock|default:'0' }}"
+                            min="0"
+                            step="0.01"
+                            required
+                        >
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Low Stock Alert</label>
+                        <input
+                            type="number"
+                            name="low_stock_alert"
+                            id="lowStockAlert"
+                            class="form-control"
+                            value="{{ item.low_stock_alert|default:'1' }}"
+                            min="0"
+                            step="0.01"
+                            required
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Cost Price €</label>
+                        <input
+                            type="number"
+                            name="cost_price"
+                            id="costPrice"
+                            class="form-control"
+                            value="{{ item.cost_price|default:'' }}"
+                            min="0"
+                            step="0.01"
+                            placeholder="Example: 6.00"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Estimated Uses Per Item</label>
+                        <input
+                            type="number"
+                            name="estimated_uses_per_item"
+                            id="estimatedUses"
+                            class="form-control"
+                            value="{{ item.estimated_uses_per_item|default:'' }}"
+                            min="1"
+                            step="1"
+                            placeholder="Example: 40"
+                        >
+                        <small class="text-muted form-helper">
+                            Example: one 5ml bottle gives 40 pairs of hands.
+                        </small>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Supplier</label>
+                        <input
+                            type="text"
+                            name="supplier"
+                            id="supplier"
+                            class="form-control"
+                            value="{{ item.supplier|default:'' }}"
+                            placeholder="Example: AliExpress, local supplier"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Purchase Date</label>
+                        <input
+                            type="date"
+                            name="purchase_date"
+                            class="form-control"
+                            value="{{ item.purchase_date|date:'Y-m-d' }}"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Expiry Date</label>
+                        <input
+                            type="date"
+                            name="expiry_date"
+                            class="form-control"
+                            value="{{ item.expiry_date|date:'Y-m-d' }}"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Opened Date</label>
+                        <input
+                            type="date"
+                            name="opened_date"
+                            class="form-control"
+                            value="{{ item.opened_date|date:'Y-m-d' }}"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Location</label>
+                        <input
+                            type="text"
+                            name="location"
+                            class="form-control"
+                            value="{{ item.location|default:'' }}"
+                            placeholder="Example: Drawer 1, Shelf A"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Issuing Country</label>
+                        <input
+                            type="text"
+                            name="issuing_country"
+                            class="form-control"
+                            value="{{ item.issuing_country|default:'' }}"
+                            placeholder="Example: CN"
+                        >
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Lookup Source</label>
+                        <input
+                            type="text"
+                            name="external_lookup_source"
+                            class="form-control"
+                            value="{{ item.external_lookup_source|default:'' }}"
+                            placeholder="Manual / EAN-Search / OCR"
+                        >
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">OCR Extracted Text</label>
+                        <textarea
+                            name="ocr_extracted_text"
+                            class="form-control"
+                            rows="3"
+                            placeholder="Later OCR text will appear here."
+                        >{{ item.ocr_extracted_text|default:'' }}</textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea
+                            name="notes"
+                            class="form-control"
+                            rows="3"
+                            placeholder="Any notes about this product."
+                        >{{ item.notes|default:'' }}</textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="active"
+                                id="active"
+                                {% if not item or item.active %}checked{% endif %}
+                            >
+                            <label class="form-check-label" for="active">
+                                Active — show this as usable stock
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="preview-box mt-5">
+                    <h4 class="fw-bold mb-2">Preview</h4>
+                    <p class="mb-1">
+                        <strong id="previewBrand">{{ item.brand|default:"Brand" }}</strong>
+                        -
+                        <span id="previewName">{{ item.product_name|default:"Product name" }}</span>
+                    </p>
+
+                    <p class="mb-1">
+                        Colour:
+                        <span id="previewColour">{{ item.colour_name|default:"-" }}</span>
+                        <span id="previewShade">
+                            {% if item.shade_code %}({{ item.shade_code }}){% endif %}
+                        </span>
+                    </p>
+
+                    <p class="mb-1">
+                        Stock:
+                        <span id="previewQuantity">{{ item.quantity_in_stock|default:"0" }}</span>
+                    </p>
+
+                    <p class="mb-0">
+                        Estimated cost per use:
+                        <strong id="previewCostPerUse">-</strong>
+                    </p>
+                </div>
+
+                <button type="submit" class="btn pink-btn btn-lg w-100 mt-4">
+                    Save Stock Item
+                </button>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const brand = document.getElementById("brand");
+    const productName = document.getElementById("productName");
+    const colourName = document.getElementById("colourName");
+    const shadeCode = document.getElementById("shadeCode");
+    const quantityInStock = document.getElementById("quantityInStock");
+    const costPrice = document.getElementById("costPrice");
+    const estimatedUses = document.getElementById("estimatedUses");
+
+    const previewBrand = document.getElementById("previewBrand");
+    const previewName = document.getElementById("previewName");
+    const previewColour = document.getElementById("previewColour");
+    const previewShade = document.getElementById("previewShade");
+    const previewQuantity = document.getElementById("previewQuantity");
+    const previewCostPerUse = document.getElementById("previewCostPerUse");
+
+    function updatePreview() {
+        previewBrand.textContent = brand.value.trim() || "Brand";
+        previewName.textContent = productName.value.trim() || "Product name";
+        previewColour.textContent = colourName.value.trim() || "-";
+        previewShade.textContent = shadeCode.value.trim() ? "(" + shadeCode.value.trim() + ")" : "";
+        previewQuantity.textContent = quantityInStock.value || "0";
+
+        const cost = parseFloat(costPrice.value);
+        const uses = parseInt(estimatedUses.value);
+
+        if (!isNaN(cost) && !isNaN(uses) && uses > 0) {
+            previewCostPerUse.textContent = "€" + (cost / uses).toFixed(2);
+        } else {
+            previewCostPerUse.textContent = "-";
+        }
+    }
+
+    [
+        brand,
+        productName,
+        colourName,
+        shadeCode,
+        quantityInStock,
+        costPrice,
+        estimatedUses
+    ].forEach(function (field) {
+        field.addEventListener("input", updatePreview);
+    });
+
+    updatePreview();
+});
+</script>
+
+{% endblock %}

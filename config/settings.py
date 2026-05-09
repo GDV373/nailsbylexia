@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "services",
     "dashboard",
     "pages",
+    "stock",
 ]
 
 
@@ -125,8 +126,6 @@ SOCIALACCOUNT_PROVIDERS = {
         "OAUTH_PKCE_ENABLED": True,
     }
 }
-EMAIL_RELAY_URL = os.environ.get("EMAIL_RELAY_URL")
-EMAIL_RELAY_SECRET = os.environ.get("EMAIL_RELAY_SECRET")
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Nails by Lexia <onboarding@resend.dev>")
@@ -142,6 +141,9 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ADMIN_BOOKING_EMAIL = os.environ.get("ADMIN_BOOKING_EMAIL")
+
+EMAIL_RELAY_URL = os.environ.get("EMAIL_RELAY_URL")
+EMAIL_RELAY_SECRET = os.environ.get("EMAIL_RELAY_SECRET")
 
 
 AUTH_PASSWORD_VALIDATORS = [

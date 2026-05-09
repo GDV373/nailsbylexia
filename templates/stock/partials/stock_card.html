@@ -1,0 +1,126 @@
+<div class="card shadow-sm stock-card h-100 {% if item.is_low_stock %}low-stock-card{% else %}healthy-stock-card{% endif %}">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <div>
+                <h5 class="fw-bold mb-1">{{ item.product_name }}</h5>
+                <small class="text-muted">
+                    {{ item.brand|default:"No brand" }}
+                </small>
+            </div>
+
+            {% if item.is_low_stock %}
+                <span class="badge-soft-pink">Low</span>
+            {% else %}
+                <span class="badge-soft-mint">OK</span>
+            {% endif %}
+        </div>
+
+        <hr>
+
+        <p class="mb-1">
+            <strong>Barcode:</strong> {{ item.barcode|default:"-" }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Colour:</strong> {{ item.colour_name|default:"-" }}
+            {% if item.shade_code %}
+                <span class="text-muted">({{ item.shade_code }})</span>
+            {% endif %}
+        </p>
+
+        <p class="mb-1">
+            <strong>Category:</strong> {{ item.get_category_display }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Type:</strong> {{ item.get_item_type_display }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Size:</strong> {{ item.display_size }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Stock:</strong> {{ item.quantity_in_stock }} {{ item.get_unit_type_display }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Low alert:</strong> {{ item.low_stock_alert }}
+        </p>
+
+        <p class="mb-1">
+            <strong>Cost:</strong>
+            {% if item.cost_price %}
+                €{{ item.cost_price }}
+            {% else %}
+                -
+            {% endif %}
+        </p>
+
+        <p class="mb-3">
+            <strong>Cost/use:</strong>
+            {% if item.estimated_cost_per_use %}
+                €{{ item.estimated_cost_per_use|floatformat:2 }}
+            {% else %}
+                -
+            {% endif %}
+        </p>
+
+        <form method="post" action="{% url 'adjust_stock' item.id %}" class="mb-3">
+            {% csrf_token %}
+
+            <div class="row g-2">
+                <div class="col-5">
+                    <select name="movement_type" class="form-select form-select-sm">
+                        <option value="add">Add</option>
+                        <option value="use">Use</option>
+                        <option value="waste">Waste</option>
+                        <option value="adjust">Set To</option>
+                    </select>
+                </div>
+
+                <div class="col-4">
+                    <input
+                        type="number"
+                        name="quantity"
+                        class="form-control form-control-sm"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="Qty"
+                        required
+                    >
+                </div>
+
+                <div class="col-3">
+                    <button type="submit" class="btn btn-dark btn-sm w-100">
+                        Save
+                    </button>
+                </div>
+            </div>
+
+            <input
+                type="text"
+                name="note"
+                class="form-control form-control-sm mt-2"
+                placeholder="Optional note"
+            >
+        </form>
+
+        <div class="d-flex gap-2">
+            <a href="{% url 'edit_stock_item' item.id %}" class="btn btn-outline-dark btn-sm flex-fill">
+                Edit
+            </a>
+
+            {% if not item.archived %}
+                <form method="post" action="{% url 'archive_stock_item' item.id %}" class="flex-fill">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                        Archive
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+
+    </div>
+</div>

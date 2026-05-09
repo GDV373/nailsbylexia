@@ -11,4 +11,5 @@ urlpatterns = [
 
     path("", include("pages.urls")),
     path("", include("bookings.urls")),
+    path("stock/", include("stock.urls")),
 ]

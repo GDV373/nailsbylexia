@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .stock-hero {
+        background: linear-gradient(135deg, #ffe4f1 0%, #fff7fb 55%, #ffffff 100%);
+        padding: 45px 0;
+        border-bottom: 1px solid #f6c6dc;
+    }
+
+    .pink-btn {
+        background: linear-gradient(135deg, #ec4899, #f472b6);
+        border: 0;
+        color: white;
+    }
+
+    .pink-btn:hover {
+        color: white;
+        filter: brightness(0.96);
+    }
+
+    .stock-card {
+        border-radius: 24px;
+        border: 0;
+        transition: 0.2s ease;
+        min-width: 350px;
+        max-width: 350px;
+    }
+
+    .stock-card:hover {
+        transform: translateY(-3px);
+    }
+
+    .low-stock-card {
+        background: #fff1f2;
+        border: 1px solid #fecdd3;
+    }
+
+    .healthy-stock-card {
+        background: #ffffff;
+    }
+
+    .stock-scroll {
+        display: flex;
+        gap: 18px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        padding: 6px 4px 18px;
+    }
+
+    .stock-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .stock-scroll::-webkit-scrollbar-thumb {
+        background: #f9a8d4;
+        border-radius: 20px;
+    }
+
+    .section-card {
+        border-radius: 24px;
+        border: 0;
+    }
+
+    .badge-soft-pink {
+        background: #fce7f3;
+        color: #9d174d;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-weight: 700;
+    }
+
+    .badge-soft-mint {
+        background: #d1fae5;
+        color: #065f46;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-weight: 700;
+    }
+
+    .scroll-btn {
+        border-radius: 999px;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+    }
+
+    .empty-box {
+        border-radius: 18px;
+        background: #f8f9fa;
+        padding: 18px;
+        color: #666;
+    }
+
+    @media (max-width: 576px) {
+        .stock-card {
+            min-width: 88vw;
+            max-width: 88vw;
+        }
+    }
+</style>
+
+<section class="stock-hero">
+    <div class="container">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h1 class="fw-bold mb-1">Manage Stock</h1>
+                <p class="text-muted mb-0">
+                    Track products, colours, equipment, costs and low-stock warnings.
+                </p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a href="{% url 'add_stock_item' %}" class="btn pink-btn btn-lg">
+                    Add Stock Item
+                </a>
+
+                <a href="{% url 'admin_bookings' %}" class="btn btn-outline-dark btn-lg">
+                    Bookings
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container py-5">
+
+    <!-- BARCODE LOOKUP -->
+    <div class="card shadow-sm section-card mb-5">
+        <div class="card-body p-4">
+            <h4 class="fw-bold mb-2">Scan Barcode</h4>
+            <p class="text-muted">
+                Scan or type a barcode. If it already exists in the database, it will load from your stock without using any external lookup.
+            </p>
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Barcode</label>
+                    <input
+                        type="text"
+                        id="barcodeInput"
+                        class="form-control form-control-lg"
+                        placeholder="Scan or type barcode"
+                        autofocus
+                    >
+                </div>
+
+                <div class="col-md-4">
+                    <button type="button" class="btn pink-btn btn-lg w-100" onclick="lookupBarcode()">
+                        Lookup
+                    </button>
+                </div>
+            </div>
+
+            <div id="barcodeResult" class="mt-3"></div>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="card shadow-sm section-card mb-5">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-lg-4">
+                    <label class="form-label fw-semibold">Search</label>
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ query }}"
+                        class="form-control"
+                        placeholder="Name, brand, barcode, colour..."
+                    >
+                </div>
+
+                <div class="col-lg-3">
+                    <label class="form-label fw-semibold">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All categories</option>
+                        {% for value, label in category_choices %}
+                            <option value="{{ value }}" {% if category == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2">
+                    <div class="form-check mt-4">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="low_stock"
+                            value="1"
+                            id="lowStock"
+                            {% if low_only %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="lowStock">
+                            Low stock only
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-lg-2">
+                    <div class="form-check mt-4">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="archived"
+                            value="1"
+                            id="archived"
+                            {% if archived %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="archived">
+                            Archived
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-lg-1">
+                    <button type="submit" class="btn btn-dark w-100">
+                        Go
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LOW STOCK -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">Low Stock</h2>
+                <p class="text-muted mb-0">Products that need attention.</p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-dark scroll-btn" onclick="scrollStock('lowStockItems', -1)">‹</button>
+                <button class="btn btn-outline-dark scroll-btn" onclick="scrollStock('lowStockItems', 1)">›</button>
+            </div>
+        </div>
+
+        {% if low_stock_items %}
+            <div class="stock-scroll" id="lowStockItems">
+                {% for item in low_stock_items %}
+                    {% include "stock/partials/stock_card.html" with item=item %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No low stock items right now.
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- ALL STOCK -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">
+                    {% if archived %}Archived Stock{% else %}Active Stock{% endif %}
+                </h2>
+                <p class="text-muted mb-0">All matching stock items.</p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-dark scroll-btn" onclick="scrollStock('allStockItems', -1)">‹</button>
+                <button class="btn btn-outline-dark scroll-btn" onclick="scrollStock('allStockItems', 1)">›</button>
+            </div>
+        </div>
+
+        {% if items %}
+            <div class="stock-scroll" id="allStockItems">
+                {% for item in items %}
+                    {% include "stock/partials/stock_card.html" with item=item %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No stock items found.
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- RECENT MOVEMENTS -->
+    <section class="mb-5">
+        <h2 class="fw-bold mb-3">Recent Stock Movements</h2>
+
+        {% if recent_movements %}
+            <div class="card shadow-sm section-card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Movement</th>
+                                    <th>Quantity</th>
+                                    <th>Note</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movement in recent_movements %}
+                                    <tr>
+                                        <td>{{ movement.stock_item.product_name }}</td>
+                                        <td>{{ movement.get_movement_type_display }}</td>
+                                        <td>{{ movement.quantity }}</td>
+                                        <td>{{ movement.note|default:"-" }}</td>
+                                        <td>{{ movement.created_at|date:"d M Y H:i" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-box">
+                No stock movements yet.
+            </div>
+        {% endif %}
+    </section>
+
+</div>
+
+<script>
+function scrollStock(containerId, direction) {
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+        return;
+    }
+
+    container.scrollBy({
+        left: 390 * direction,
+        behavior: "smooth"
+    });
+}
+
+function lookupBarcode() {
+    const barcodeInput = document.getElementById("barcodeInput");
+    const resultBox = document.getElementById("barcodeResult");
+    const barcode = barcodeInput.value.trim();
+
+    if (!barcode) {
+        resultBox.innerHTML = `
+            <div class="alert alert-warning">
+                Please scan or type a barcode first.
+            </div>
+        `;
+        return;
+    }
+
+    resultBox.innerHTML = `
+        <div class="alert alert-info">
+            Searching your stock database...
+        </div>
+    `;
+
+    fetch("{% url 'lookup_stock_by_barcode' %}?barcode=" + encodeURIComponent(barcode))
+        .then(response => response.json())
+        .then(data => {
+            if (data.found) {
+                resultBox.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Product found in your database.</strong><br>
+                        ${data.brand ? data.brand + " - " : ""}${data.product_name}<br>
+                        Colour: ${data.colour_name || "-"} ${data.shade_code ? "(" + data.shade_code + ")" : ""}<br>
+                        Stock: ${data.quantity_in_stock}<br>
+                        <a href="${data.edit_url}" class="btn btn-sm btn-dark mt-2">Open / Add Stock</a>
+                    </div>
+                `;
+            } else {
+                resultBox.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Barcode not found locally.</strong><br>
+                        You can add it manually now. Later we can connect this to EAN/OCR lookup.
+                        <br>
+                        <a href="{% url 'add_stock_item' %}?barcode=${encodeURIComponent(barcode)}" class="btn btn-sm pink-btn mt-2">
+                            Add New Product With This Barcode
+                        </a>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            resultBox.innerHTML = `
+                <div class="alert alert-danger">
+                    Lookup failed. Please try again.
+                </div>
+            `;
+        });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const barcodeInput = document.getElementById("barcodeInput");
+
+    if (barcodeInput) {
+        barcodeInput.addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                lookupBarcode();
+            }
+        });
+    }
+});
+</script>
+
+{% endblock %}

@@ -36,7 +36,23 @@
     .form-helper {
         font-size: 0.85rem;
     }
+
+    .scanner-box {
+        display: none;
+        border-radius: 22px;
+        background: #111;
+        padding: 16px;
+        margin-top: 16px;
+    }
+
+    #reader {
+        overflow: hidden;
+        border-radius: 18px;
+        background: #000;
+    }
 </style>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <section class="stock-form-hero">
     <div class="container">
@@ -60,6 +76,10 @@
     <div class="card shadow-sm stock-form-card mx-auto">
         <div class="card-body p-4 p-md-5">
 
+            <div class="alert alert-info">
+                Scan a barcode or use OCR. If the product already exists in your database, it will open the existing item instead of wasting another lookup.
+            </div>
+
             <form method="post" id="stockForm">
                 {% csrf_token %}
 
@@ -78,6 +98,46 @@
                         <small class="text-muted form-helper">
                             Leave blank if the product has no barcode.
                         </small>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button type="button" class="btn pink-btn" onclick="startBarcodeScanner()">
+                                Scan Barcode
+                            </button>
+
+                            <button type="button" class="btn btn-outline-dark" onclick="lookupBarcodeAndFill()">
+                                Lookup Barcode
+                            </button>
+
+                            <button type="button" class="btn btn-outline-danger" onclick="stopBarcodeScanner()">
+                                Stop Camera
+                            </button>
+                        </div>
+
+                        <div class="scanner-box" id="scannerBox">
+                            <div id="reader"></div>
+                        </div>
+
+                        <div id="barcodeLookupResult" class="mt-3"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">OCR Photo</label>
+                        <input
+                            type="file"
+                            id="ocrImage"
+                            class="form-control form-control-lg"
+                            accept="image/*"
+                            capture="environment"
+                        >
+                        <small class="text-muted form-helper">
+                            Use this if there is no barcode. Take/upload a label photo and OCR will try to fill the fields.
+                        </small>
+
+                        <button type="button" class="btn pink-btn mt-3 w-100" onclick="runOCR()">
+                            OCR Photo and Fill Fields
+                        </button>
+
+                        <div id="ocrResult" class="mt-3"></div>
                     </div>
 
                     <div class="col-md-6">
@@ -304,6 +364,7 @@
                         <input
                             type="text"
                             name="issuing_country"
+                            id="issuingCountry"
                             class="form-control"
                             value="{{ item.issuing_country|default:'' }}"
                             placeholder="Example: CN"
@@ -315,6 +376,7 @@
                         <input
                             type="text"
                             name="external_lookup_source"
+                            id="externalLookupSource"
                             class="form-control"
                             value="{{ item.external_lookup_source|default:'' }}"
                             placeholder="Manual / EAN-Search / OCR"
@@ -325,9 +387,10 @@
                         <label class="form-label fw-semibold">OCR Extracted Text</label>
                         <textarea
                             name="ocr_extracted_text"
+                            id="ocrExtractedText"
                             class="form-control"
                             rows="3"
-                            placeholder="Later OCR text will appear here."
+                            placeholder="OCR text will appear here."
                         >{{ item.ocr_extracted_text|default:'' }}</textarea>
                     </div>
 
@@ -397,6 +460,185 @@
 </div>
 
 <script>
+let html5QrCode = null;
+
+function getCsrfToken() {
+    const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+    return csrfInput ? csrfInput.value : "";
+}
+
+function setField(id, value) {
+    const el = document.getElementById(id);
+
+    if (!el || value === undefined || value === null || value === "") {
+        return;
+    }
+
+    el.value = value;
+}
+
+function fillFields(data) {
+    setField("barcode", data.barcode);
+    setField("brand", data.brand);
+    setField("productName", data.product_name);
+    setField("colourName", data.colour_name);
+    setField("shadeCode", data.shade_code);
+    setField("itemType", data.item_type);
+    setField("category", data.category);
+    setField("unitType", data.unit_type);
+    setField("sizeValue", data.size_value);
+    setField("sizeUnit", data.size_unit);
+    setField("issuingCountry", data.issuing_country);
+    setField("externalLookupSource", data.source || data.external_lookup_source);
+    setField("ocrExtractedText", data.ocr_extracted_text);
+
+    updatePreview();
+}
+
+function lookupBarcodeAndFill() {
+    const barcode = document.getElementById("barcode").value.trim();
+    const resultBox = document.getElementById("barcodeLookupResult");
+
+    if (!barcode) {
+        resultBox.innerHTML = `<div class="alert alert-warning">Please scan or type a barcode first.</div>`;
+        return;
+    }
+
+    resultBox.innerHTML = `<div class="alert alert-info">Checking your database first...</div>`;
+
+    fetch("{% url 'external_barcode_lookup' %}?barcode=" + encodeURIComponent(barcode))
+        .then(response => response.json())
+        .then(data => {
+            if (data.found && data.already_in_db) {
+                resultBox.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>This product already exists.</strong><br>
+                        Open it to add or adjust stock.
+                        <br>
+                        <a href="${data.edit_url}" class="btn btn-sm btn-dark mt-2">Open Existing Product</a>
+                    </div>
+                `;
+                return;
+            }
+
+            if (data.found) {
+                fillFields(data);
+
+                resultBox.innerHTML = `
+                    <div class="alert alert-success">
+                        Product data found and filled. Please confirm details before saving.
+                    </div>
+                `;
+                return;
+            }
+
+            resultBox.innerHTML = `
+                <div class="alert alert-warning">
+                    Barcode not found. You can enter the details manually or use OCR.
+                </div>
+            `;
+        })
+        .catch(() => {
+            resultBox.innerHTML = `<div class="alert alert-danger">Barcode lookup failed.</div>`;
+        });
+}
+
+function startBarcodeScanner() {
+    const scannerBox = document.getElementById("scannerBox");
+    scannerBox.style.display = "block";
+
+    if (html5QrCode) {
+        return;
+    }
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    html5QrCode.start(
+        { facingMode: "environment" },
+        {
+            fps: 10,
+            qrbox: { width: 250, height: 150 }
+        },
+        function (decodedText) {
+            document.getElementById("barcode").value = decodedText;
+            stopBarcodeScanner();
+            lookupBarcodeAndFill();
+        },
+        function () {}
+    ).catch(function (err) {
+        document.getElementById("barcodeLookupResult").innerHTML = `
+            <div class="alert alert-danger">
+                Camera could not start: ${err}
+            </div>
+        `;
+    });
+}
+
+function stopBarcodeScanner() {
+    const scannerBox = document.getElementById("scannerBox");
+
+    if (!html5QrCode) {
+        scannerBox.style.display = "none";
+        return;
+    }
+
+    html5QrCode.stop()
+        .then(() => {
+            html5QrCode.clear();
+            html5QrCode = null;
+            scannerBox.style.display = "none";
+        })
+        .catch(() => {
+            html5QrCode = null;
+            scannerBox.style.display = "none";
+        });
+}
+
+function runOCR() {
+    const fileInput = document.getElementById("ocrImage");
+    const resultBox = document.getElementById("ocrResult");
+
+    if (!fileInput.files.length) {
+        resultBox.innerHTML = `<div class="alert alert-warning">Please choose or take a photo first.</div>`;
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", fileInput.files[0]);
+
+    resultBox.innerHTML = `<div class="alert alert-info">Reading image with OCR...</div>`;
+
+    fetch("{% url 'ocr_lookup' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCsrfToken()
+        },
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                resultBox.innerHTML = `
+                    <div class="alert alert-warning">
+                        ${data.message || "OCR could not read the image."}
+                    </div>
+                `;
+                return;
+            }
+
+            fillFields(data);
+
+            resultBox.innerHTML = `
+                <div class="alert alert-success">
+                    OCR completed and fields were filled. Please confirm before saving.
+                </div>
+            `;
+        })
+        .catch(() => {
+            resultBox.innerHTML = `<div class="alert alert-danger">OCR request failed.</div>`;
+        });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const brand = document.getElementById("brand");
     const productName = document.getElementById("productName");
@@ -413,7 +655,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const previewQuantity = document.getElementById("previewQuantity");
     const previewCostPerUse = document.getElementById("previewCostPerUse");
 
-    function updatePreview() {
+    window.updatePreview = function () {
         previewBrand.textContent = brand.value.trim() || "Brand";
         previewName.textContent = productName.value.trim() || "Product name";
         previewColour.textContent = colourName.value.trim() || "-";
@@ -428,7 +670,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             previewCostPerUse.textContent = "-";
         }
-    }
+    };
 
     [
         brand,

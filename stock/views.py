@@ -1,5 +1,8 @@
 from decimal import Decimal, InvalidOperation
+import os
+import re
 
+import requests
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
@@ -26,6 +29,118 @@ def parse_int(value, default=None):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def guess_category_from_text(text):
+    text_lower = text.lower()
+
+    if "gel polish" in text_lower or "color gel" in text_lower or "colour gel" in text_lower:
+        return "gel_polish"
+
+    if "builder" in text_lower or "biab" in text_lower:
+        return "builder_gel"
+
+    if "top coat" in text_lower:
+        return "top_coat"
+
+    if "base coat" in text_lower:
+        return "base_coat"
+
+    if "acrylic" in text_lower:
+        return "acrylic"
+
+    if "cleaner" in text_lower or "prep" in text_lower:
+        return "prep"
+
+    if "remover" in text_lower or "removal" in text_lower:
+        return "removal"
+
+    return "other"
+
+
+def guess_brand_from_text(text):
+    known_brands = [
+        "BORN PRETTY",
+        "GUIBOFU",
+        "VENALISA",
+        "MODELONES",
+        "BEETLES",
+        "ROSALIND",
+        "SAVILAND",
+        "MEFA",
+    ]
+
+    text_upper = text.upper()
+
+    for brand in known_brands:
+        if brand in text_upper:
+            return brand
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+    if lines:
+        first_line = lines[0].strip()
+        if len(first_line) <= 40:
+            return first_line.upper()
+
+    return ""
+
+
+def guess_size_from_text(text):
+    match = re.search(r"(\d+(?:\.\d+)?)\s*(ml|g|pcs|pc)", text, re.IGNORECASE)
+
+    if not match:
+        return "", "ml"
+
+    value = match.group(1)
+    unit = match.group(2).lower()
+
+    if unit == "pc":
+        unit = "pcs"
+
+    return value, unit
+
+
+def build_product_name_from_ocr(text):
+    cleaned_lines = []
+
+    for line in text.splitlines():
+        line = line.strip()
+
+        if not line:
+            continue
+
+        if len(line) <= 2:
+            continue
+
+        cleaned_lines.append(line)
+
+    if not cleaned_lines:
+        return ""
+
+    return " ".join(cleaned_lines[:4])
+
+
+def get_known_barcode_data(barcode):
+    known_items = {
+        "6975708101578": {
+            "found": True,
+            "source": "EAN-Search manual confirmed",
+            "barcode": "6975708101578",
+            "product_name": "10ml Flow Light White Cat Magnetic Gel Nail Polish Ultra Shine Semi Permanent Soak Off",
+            "brand": "BORN PRETTY",
+            "colour_name": "Flow Light White Cat",
+            "shade_code": "1578",
+            "category": "gel_polish",
+            "item_type": "consumable",
+            "unit_type": "bottle",
+            "size_value": "10",
+            "size_unit": "ml",
+            "issuing_country": "CN",
+        }
+    }
+
+    return known_items.get(barcode)
 
 
 @staff_member_required
@@ -321,10 +436,156 @@ def lookup_stock_by_barcode(request):
         "brand": item.brand,
         "colour_name": item.colour_name,
         "shade_code": item.shade_code,
-        "category": item.get_category_display(),
-        "item_type": item.get_item_type_display(),
+        "category": item.category,
+        "category_display": item.get_category_display(),
+        "item_type": item.item_type,
+        "item_type_display": item.get_item_type_display(),
+        "unit_type": item.unit_type,
+        "size_value": str(item.size_value or ""),
+        "size_unit": item.size_unit,
         "quantity_in_stock": str(item.quantity_in_stock),
         "low_stock_alert": str(item.low_stock_alert),
+        "cost_price": str(item.cost_price or ""),
+        "estimated_uses_per_item": item.estimated_uses_per_item or "",
+        "supplier": item.supplier,
+        "issuing_country": item.issuing_country,
+        "external_lookup_source": item.external_lookup_source,
         "is_low_stock": item.is_low_stock,
         "edit_url": f"/stock/{item.id}/edit/",
+    })
+
+
+@staff_member_required
+def external_barcode_lookup(request):
+    barcode = request.GET.get("barcode", "").strip()
+
+    if not barcode:
+        return JsonResponse({
+            "found": False,
+            "message": "No barcode provided.",
+        })
+
+    item = StockItem.objects.filter(barcode=barcode).first()
+
+    if item:
+        return JsonResponse({
+            "found": True,
+            "source": "local_database",
+            "already_in_db": True,
+            "edit_url": f"/stock/{item.id}/edit/",
+            "product_name": item.product_name,
+            "brand": item.brand,
+            "colour_name": item.colour_name,
+            "shade_code": item.shade_code,
+            "category": item.category,
+            "item_type": item.item_type,
+            "unit_type": item.unit_type,
+            "size_value": str(item.size_value or ""),
+            "size_unit": item.size_unit,
+            "issuing_country": item.issuing_country,
+        })
+
+    known_data = get_known_barcode_data(barcode)
+
+    if known_data:
+        known_data["already_in_db"] = False
+        return JsonResponse(known_data)
+
+    return JsonResponse({
+        "found": False,
+        "already_in_db": False,
+        "barcode": barcode,
+        "message": "Barcode not found locally. No external API is connected yet.",
+    })
+
+
+@staff_member_required
+def ocr_lookup(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "success": False,
+            "message": "Invalid request method.",
+        }, status=405)
+
+    image = request.FILES.get("image")
+
+    if not image:
+        return JsonResponse({
+            "success": False,
+            "message": "No image uploaded.",
+        }, status=400)
+
+    api_key = os.environ.get("OCR_SPACE_API_KEY")
+
+    if not api_key:
+        return JsonResponse({
+            "success": False,
+            "message": "OCR_SPACE_API_KEY is missing. Add it to Render/local environment before using OCR.",
+        }, status=400)
+
+    try:
+        response = requests.post(
+            "https://api.ocr.space/parse/image",
+            files={"file": image},
+            data={
+                "apikey": api_key,
+                "language": "eng",
+                "isOverlayRequired": False,
+                "OCREngine": 2,
+            },
+            timeout=30,
+        )
+
+        result = response.json()
+
+    except Exception as exc:
+        return JsonResponse({
+            "success": False,
+            "message": f"OCR request failed: {exc}",
+        }, status=500)
+
+    if result.get("IsErroredOnProcessing"):
+        return JsonResponse({
+            "success": False,
+            "message": result.get("ErrorMessage", ["OCR failed"])[0],
+        }, status=400)
+
+    parsed_results = result.get("ParsedResults", [])
+
+    if not parsed_results:
+        return JsonResponse({
+            "success": False,
+            "message": "No text detected.",
+        }, status=404)
+
+    extracted_text = parsed_results[0].get("ParsedText", "").strip()
+
+    if not extracted_text:
+        return JsonResponse({
+            "success": False,
+            "message": "No readable text detected.",
+        }, status=404)
+
+    brand = guess_brand_from_text(extracted_text)
+    product_name = build_product_name_from_ocr(extracted_text)
+    category = guess_category_from_text(extracted_text)
+    size_value, size_unit = guess_size_from_text(extracted_text)
+
+    colour_name = ""
+
+    if "yellow" in extracted_text.lower():
+        colour_name = "Yellow"
+
+    return JsonResponse({
+        "success": True,
+        "source": "OCR.space",
+        "ocr_extracted_text": extracted_text,
+        "brand": brand,
+        "product_name": product_name,
+        "category": category,
+        "item_type": "consumable",
+        "unit_type": "bottle",
+        "size_value": size_value,
+        "size_unit": size_unit,
+        "colour_name": colour_name,
     })

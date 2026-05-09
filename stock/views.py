@@ -500,6 +500,7 @@ def external_barcode_lookup(request):
 
 
 @staff_member_required
+@staff_member_required
 def ocr_lookup(request):
     if request.method != "POST":
         return JsonResponse({
@@ -520,34 +521,65 @@ def ocr_lookup(request):
     if not api_key:
         return JsonResponse({
             "success": False,
-            "message": "OCR_SPACE_API_KEY is missing. Add it to Render/local environment before using OCR.",
+            "message": "OCR_SPACE_API_KEY is missing in Render environment variables.",
         }, status=400)
 
     try:
         response = requests.post(
             "https://api.ocr.space/parse/image",
-            files={"file": image},
+            files={
+                "file": (
+                    image.name or "stock-image.jpg",
+                    image.read(),
+                    image.content_type or "image/jpeg",
+                )
+            },
             data={
                 "apikey": api_key,
                 "language": "eng",
-                "isOverlayRequired": False,
-                "OCREngine": 2,
+                "isOverlayRequired": "false",
+                "detectOrientation": "true",
+                "scale": "true",
+                "OCREngine": "2",
             },
-            timeout=30,
+            timeout=18,
         )
 
-        result = response.json()
+    except requests.exceptions.Timeout:
+        return JsonResponse({
+            "success": False,
+            "message": "OCR timed out. Try taking the photo closer, crop the label, or use better lighting.",
+        }, status=504)
 
     except Exception as exc:
         return JsonResponse({
             "success": False,
-            "message": f"OCR request failed: {exc}",
+            "message": f"OCR request failed before reaching OCR.space: {repr(exc)}",
+        }, status=500)
+
+    try:
+        result = response.json()
+    except Exception:
+        return JsonResponse({
+            "success": False,
+            "message": f"OCR service did not return JSON. Status: {response.status_code}. Response: {response.text[:300]}",
+        }, status=500)
+
+    if response.status_code != 200:
+        return JsonResponse({
+            "success": False,
+            "message": f"OCR.space returned HTTP {response.status_code}: {result}",
         }, status=500)
 
     if result.get("IsErroredOnProcessing"):
+        error_message = result.get("ErrorMessage") or result.get("ErrorDetails") or "OCR failed."
+
+        if isinstance(error_message, list):
+            error_message = " ".join(str(x) for x in error_message)
+
         return JsonResponse({
             "success": False,
-            "message": result.get("ErrorMessage", ["OCR failed"])[0],
+            "message": str(error_message),
         }, status=400)
 
     parsed_results = result.get("ParsedResults", [])
@@ -555,7 +587,7 @@ def ocr_lookup(request):
     if not parsed_results:
         return JsonResponse({
             "success": False,
-            "message": "No text detected.",
+            "message": "No OCR result returned. Try a clearer photo with better lighting.",
         }, status=404)
 
     extracted_text = parsed_results[0].get("ParsedText", "").strip()
@@ -563,7 +595,7 @@ def ocr_lookup(request):
     if not extracted_text:
         return JsonResponse({
             "success": False,
-            "message": "No readable text detected.",
+            "message": "No readable text detected. Try taking the photo closer and straight-on.",
         }, status=404)
 
     brand = guess_brand_from_text(extracted_text)
@@ -572,9 +604,24 @@ def ocr_lookup(request):
     size_value, size_unit = guess_size_from_text(extracted_text)
 
     colour_name = ""
+    text_lower = extracted_text.lower()
 
-    if "yellow" in extracted_text.lower():
+    if "yellow" in text_lower:
         colour_name = "Yellow"
+    elif "white" in text_lower:
+        colour_name = "White"
+    elif "black" in text_lower:
+        colour_name = "Black"
+    elif "pink" in text_lower:
+        colour_name = "Pink"
+    elif "red" in text_lower:
+        colour_name = "Red"
+    elif "blue" in text_lower:
+        colour_name = "Blue"
+    elif "green" in text_lower:
+        colour_name = "Green"
+    elif "nude" in text_lower:
+        colour_name = "Nude"
 
     return JsonResponse({
         "success": True,

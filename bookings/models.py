@@ -14,6 +14,41 @@ class AvailabilitySlot(models.Model):
     def __str__(self):
         return f"{self.start_time} to {self.end_time}"
 
+class EmailLog(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("sent", "Sent"),
+        ("failed", "Failed"),
+    ]
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="email_logs",
+        null=True,
+        blank=True,
+    )
+
+    subject = models.CharField(max_length=255)
+    recipient_emails = models.TextField()
+    payload = models.JSONField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+
+    error_message = models.TextField(blank=True, null=True)
+    attempts = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_attempt_at = models.DateTimeField(blank=True, null=True)
+    sent_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.subject} - {self.status}"
+
 
 class Booking(models.Model):
     BOOKING_TYPE_CHOICES = [

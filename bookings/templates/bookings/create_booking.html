@@ -62,6 +62,10 @@
         min-width: 130px;
     }
 
+    .slot-card input {
+        display: none;
+    }
+
     @keyframes fadeUp {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -106,6 +110,7 @@
 
             <div class="col-lg-8">
 
+                <!-- STEP 1 -->
                 <div class="card shadow-sm step-card mb-4">
                     <div class="card-body p-4">
                         <h3>1. What would you like to book?</h3>
@@ -137,6 +142,7 @@
                     </div>
                 </div>
 
+                <!-- NAIL SERVICE -->
                 <div class="card shadow-sm step-card mb-4 hidden-step" id="nailsServiceStep">
                     <div class="card-body p-4">
                         <h3>2. Choose Nails Service</h3>
@@ -168,6 +174,7 @@
                     </div>
                 </div>
 
+                <!-- NAIL NOTES -->
                 <div class="card shadow-sm step-card mb-4 hidden-step" id="nailsNotesStep">
                     <div class="card-body p-4">
                         <h3>Tell Us What You Want for Nails</h3>
@@ -192,9 +199,10 @@
                     </div>
                 </div>
 
+                <!-- TOE SERVICE -->
                 <div class="card shadow-sm step-card mb-4 hidden-step" id="toesServiceStep">
                     <div class="card-body p-4">
-                        <h3 id="toesTitle">Choose Toes Service</h3>
+                        <h3>Choose Toes Service</h3>
 
                         <div class="row g-3 mt-2">
                             {% for service in toe_services %}
@@ -223,6 +231,7 @@
                     </div>
                 </div>
 
+                <!-- TOE NOTES -->
                 <div class="card shadow-sm step-card mb-4 hidden-step" id="toesNotesStep">
                     <div class="card-body p-4">
                         <h3>Tell Us What You Want for Toes</h3>
@@ -247,6 +256,7 @@
                     </div>
                 </div>
 
+                <!-- TIME STEP -->
                 <div class="card shadow-sm step-card mb-4 hidden-step" id="timeStep">
                     <div class="card-body p-4">
                         <h3>Choose Available Time</h3>
@@ -258,6 +268,7 @@
                     </div>
                 </div>
 
+                <!-- MOBILE SUMMARY -->
                 <div class="card shadow summary-card d-lg-none mb-4 hidden-step" id="mobileSummary">
                     <div class="card-body p-4">
                         <h4 class="mb-3">Booking Summary</h4>
@@ -283,6 +294,7 @@
                     </div>
                 </div>
 
+                <!-- CASH -->
                 <div class="form-check mb-3 hidden-step" id="cashStep">
                     <input class="form-check-input" type="checkbox" name="cash_confirmed" id="cashConfirmed">
                     <label class="form-check-label" for="cashConfirmed">
@@ -296,6 +308,7 @@
 
             </div>
 
+            <!-- DESKTOP SUMMARY -->
             <div class="col-lg-4 d-none d-lg-block">
                 <div class="card shadow summary-card">
                     <div class="card-body p-4">
@@ -356,17 +369,42 @@ document.addEventListener("DOMContentLoaded", function () {
     const mobileSummary = document.getElementById("mobileSummary");
 
     function show(el) {
-        el.classList.remove("hidden-step");
+        if (el) {
+            el.classList.remove("hidden-step");
+        }
     }
 
     function hide(el) {
-        el.classList.add("hidden-step");
+        if (el) {
+            el.classList.add("hidden-step");
+        }
     }
 
     function clearSelected(selector) {
         document.querySelectorAll(selector).forEach(function (card) {
             card.classList.remove("selected");
         });
+    }
+
+    function resetSelectedTime() {
+        startTimeInput.value = "";
+        endTimeInput.value = "";
+        hide(cashStep);
+        hide(confirmButton);
+    }
+
+    function getTotalDuration() {
+        let totalDuration = 0;
+
+        if (nailService) {
+            totalDuration += parseInt(nailService.duration);
+        }
+
+        if (toeService) {
+            totalDuration += parseInt(toeService.duration);
+        }
+
+        return totalDuration;
     }
 
     function updateSummary() {
@@ -428,6 +466,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (totalDuration > 0) {
             show(totalSummary);
+            resetSelectedTime();
             loadAvailableSlots(totalDuration);
         } else {
             hide(totalSummary);
@@ -437,15 +476,25 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function resetSelectedTime() {
-        startTimeInput.value = "";
-        endTimeInput.value = "";
-        hide(cashStep);
-        hide(confirmButton);
+    function shouldShowTimeStep() {
+        if (bookingType === "nails") {
+            return nailService !== null;
+        }
+
+        if (bookingType === "toes") {
+            return toeService !== null;
+        }
+
+        if (bookingType === "both") {
+            return nailService !== null && toeService !== null;
+        }
+
+        return false;
     }
 
     function buildCalendarDays(allDates) {
         const dateMap = {};
+
         allDates.forEach(function (date) {
             dateMap[date.date_key] = date;
         });
@@ -496,18 +545,37 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function loadAvailableSlots(duration) {
+        if (!shouldShowTimeStep()) {
+            hide(timeStep);
+            return;
+        }
+
+        show(timeStep);
+
+        slotsContainer.innerHTML = `
+            <div class="alert alert-info mb-0">
+                Loading available times...
+            </div>
+        `;
+
         fetch("{% url 'available_slots_api' %}?duration=" + duration)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Available slots API failed. Status: " + response.status);
+                }
+
+                return response.json();
+            })
             .then(data => {
                 slotsContainer.innerHTML = "";
 
-                if (!data.months.length) {
+                if (!data.months || !data.months.length) {
                     slotsContainer.innerHTML = `
                         <div class="alert alert-warning mb-0">
                             No available dates found for this booking duration.
+                            Please contact us or choose another service.
                         </div>
                     `;
-                    show(timeStep);
                     hide(cashStep);
                     hide(confirmButton);
                     return;
@@ -520,6 +588,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         allDates.push(date);
                     });
                 });
+
+                if (!allDates.length) {
+                    slotsContainer.innerHTML = `
+                        <div class="alert alert-warning mb-0">
+                            No available dates found.
+                        </div>
+                    `;
+                    hide(cashStep);
+                    hide(confirmButton);
+                    return;
+                }
 
                 const weeks = buildCalendarDays(allDates);
 
@@ -579,7 +658,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     html += `
                         </div>
-
                         <div id="dayTimesContainer"></div>
                     `;
 
@@ -614,10 +692,6 @@ document.addEventListener("DOMContentLoaded", function () {
                             renderTimesForDate(selectedDate);
                         });
                     });
-
-                    if (selectedDate) {
-                        renderTimesForDate(selectedDate);
-                    }
                 }
 
                 function renderTimesForDate(date) {
@@ -663,9 +737,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     document.querySelectorAll(".period-btn").forEach(function (btn) {
                         btn.addEventListener("click", function () {
-                            document.querySelectorAll(".period-btn").forEach(b => {
+                            document.querySelectorAll(".period-btn").forEach(function (b) {
                                 b.classList.remove("btn-dark");
-                                b.classList.remove("btn-outline-dark");
                                 b.classList.add("btn-outline-dark");
                             });
 
@@ -719,7 +792,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             startTimeInput.value = card.dataset.start;
                             endTimeInput.value = card.dataset.end;
 
-                            document.querySelectorAll(".slot-card").forEach(c => {
+                            document.querySelectorAll(".slot-card").forEach(function (c) {
                                 c.classList.remove("selected");
                             });
 
@@ -732,7 +805,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 renderWeek();
-                show(timeStep);
+            })
+            .catch(error => {
+                console.error(error);
+
+                slotsContainer.innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        Could not load available times. Please try again later.
+                        <br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+
+                hide(cashStep);
+                hide(confirmButton);
             });
     }
 
@@ -748,8 +834,11 @@ document.addEventListener("DOMContentLoaded", function () {
             toeService = null;
             nailServiceInput.value = "";
             toeServiceInput.value = "";
+            resetSelectedTime();
 
+            hide(nailsServiceStep);
             hide(nailsNotesStep);
+            hide(toesServiceStep);
             hide(toesNotesStep);
             hide(timeStep);
             hide(cashStep);
@@ -760,11 +849,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (bookingType === "nails") {
                 show(nailsServiceStep);
-                hide(toesServiceStep);
             }
 
             if (bookingType === "toes") {
-                hide(nailsServiceStep);
                 show(toesServiceStep);
             }
 
@@ -792,6 +879,12 @@ document.addEventListener("DOMContentLoaded", function () {
             card.classList.add("selected");
 
             show(nailsNotesStep);
+
+            if (bookingType === "nails") {
+                hide(toesServiceStep);
+                hide(toesNotesStep);
+            }
+
             updateSummary();
         });
     });
@@ -811,6 +904,7 @@ document.addEventListener("DOMContentLoaded", function () {
             card.classList.add("selected");
 
             show(toesNotesStep);
+
             updateSummary();
         });
     });
@@ -879,6 +973,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!cashConfirmed.checked) {
             event.preventDefault();
             alert("Please confirm cash payment at appointment.");
+            return;
         }
     });
 });

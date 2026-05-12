@@ -10,7 +10,7 @@ from django.utils import timezone
 from bookings.models import AvailabilitySlot, Booking
 from bookings.views import send_booking_email
 from services.models import NailService
-
+from django.db.models.deletion import ProtectedError
 
 User = get_user_model()
 
@@ -281,8 +281,17 @@ def delete_service(request, service_id):
     service = get_object_or_404(NailService, id=service_id)
 
     if request.method == "POST":
-        service.delete()
-        messages.success(request, "Service deleted.")
+        try:
+            service.delete()
+            messages.success(request, "Service deleted.")
+        except ProtectedError:
+            service.active = False
+            service.save()
+            messages.warning(
+                request,
+                "This service has existing bookings, so it cannot be deleted. It has been deactivated instead."
+            )
+
         return redirect("services_manager")
 
     return render(request, "dashboard/delete_service.html", {"service": service})

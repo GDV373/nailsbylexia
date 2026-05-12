@@ -393,18 +393,20 @@ document.addEventListener("DOMContentLoaded", function () {
         hide(confirmButton);
     }
 
-    function getTotalDuration() {
-        let totalDuration = 0;
-
-        if (nailService) {
-            totalDuration += parseInt(nailService.duration);
+    function shouldShowTimeStep() {
+        if (bookingType === "nails") {
+            return nailService !== null;
         }
 
-        if (toeService) {
-            totalDuration += parseInt(toeService.duration);
+        if (bookingType === "toes") {
+            return toeService !== null;
         }
 
-        return totalDuration;
+        if (bookingType === "both") {
+            return nailService !== null && toeService !== null;
+        }
+
+        return false;
     }
 
     function updateSummary() {
@@ -466,30 +468,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (totalDuration > 0) {
             show(totalSummary);
+        } else {
+            hide(totalSummary);
+        }
+
+        if (shouldShowTimeStep()) {
             resetSelectedTime();
             loadAvailableSlots(totalDuration);
         } else {
-            hide(totalSummary);
             hide(timeStep);
             hide(cashStep);
             hide(confirmButton);
         }
-    }
-
-    function shouldShowTimeStep() {
-        if (bookingType === "nails") {
-            return nailService !== null;
-        }
-
-        if (bookingType === "toes") {
-            return toeService !== null;
-        }
-
-        if (bookingType === "both") {
-            return nailService !== null && toeService !== null;
-        }
-
-        return false;
     }
 
     function buildCalendarDays(allDates) {
@@ -499,7 +489,20 @@ document.addEventListener("DOMContentLoaded", function () {
             dateMap[date.date_key] = date;
         });
 
-        const firstAvailable = new Date(allDates[0].date_key + "T00:00:00");
+        function localDateKey(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+            const day = String(dateObj.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        const firstAvailableParts = allDates[0].date_key.split("-");
+        const firstAvailable = new Date(
+            parseInt(firstAvailableParts[0]),
+            parseInt(firstAvailableParts[1]) - 1,
+            parseInt(firstAvailableParts[2])
+        );
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -511,7 +514,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const weekStart = new Date(startDate);
         weekStart.setDate(startDate.getDate() + mondayOffset);
 
-        const lastAvailable = new Date(allDates[allDates.length - 1].date_key + "T00:00:00");
+        const lastAvailableParts = allDates[allDates.length - 1].date_key.split("-");
+        const lastAvailable = new Date(
+            parseInt(lastAvailableParts[0]),
+            parseInt(lastAvailableParts[1]) - 1,
+            parseInt(lastAvailableParts[2])
+        );
 
         const weeks = [];
         let cursor = new Date(weekStart);
@@ -523,7 +531,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 const d = new Date(cursor);
                 d.setDate(cursor.getDate() + i);
 
-                const key = d.toISOString().split("T")[0];
+                const key = localDateKey(d);
+
                 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
                 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

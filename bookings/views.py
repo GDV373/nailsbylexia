@@ -19,6 +19,9 @@ def send_booking_email(booking, subject_prefix):
 
     subject = f"{subject_prefix} - Nails by Lexia Booking"
 
+    local_start = timezone.localtime(booking.start_time)
+    local_end = timezone.localtime(booking.end_time)
+
     payload = {
         "subject": subject,
         "customer_email": booking.client.email,
@@ -28,8 +31,8 @@ def send_booking_email(booking, subject_prefix):
         "client_phone": booking.client.phone,
 
         "booking_type": booking.get_booking_type_display(),
-        "booking_date": booking.start_time.strftime("%d %B %Y"),
-        "booking_time": f"{booking.start_time.strftime('%H:%M')} to {booking.end_time.strftime('%H:%M')}",
+        "booking_date": local_start.strftime("%d %B %Y"),
+        "booking_time": f"{local_start.strftime('%H:%M')} to {local_end.strftime('%H:%M')}",
         "duration_minutes": booking.total_duration_minutes,
         "total_price": str(booking.total_price),
         "payment": booking.get_payment_method_display(),
@@ -54,6 +57,8 @@ def send_booking_email(booking, subject_prefix):
     if admin_email:
         recipients.append(admin_email)
 
+    recipients = list(dict.fromkeys(recipients))
+
     email_log = EmailLog.objects.create(
         booking=booking,
         subject=subject,
@@ -77,7 +82,7 @@ def send_booking_email(booking, subject_prefix):
             relay_url,
             json=payload,
             headers={"X-Relay-Secret": relay_secret},
-            timeout=8,
+            timeout=25,
         )
 
         email_log.attempts += 1
@@ -145,13 +150,13 @@ def get_available_slots(total_duration):
                 current_time = current_time.replace(
                     minute=0,
                     second=0,
-                    microsecond=0
+                    microsecond=0,
                 )
             else:
                 current_time = current_time.replace(
                     minute=rounded_minute,
                     second=0,
-                    microsecond=0
+                    microsecond=0,
                 )
 
         while True:
@@ -195,10 +200,13 @@ def available_slots_api(request):
     grouped = {}
 
     for slot in slots:
-        month_key = slot["start"].strftime("%Y-%m")
-        month_label = slot["start"].strftime("%B %Y")
-        date_key = slot["start"].strftime("%Y-%m-%d")
-        date_label = slot["start"].strftime("%a %d %b")
+        local_start = timezone.localtime(slot["start"])
+        local_end = timezone.localtime(slot["end"])
+
+        month_key = local_start.strftime("%Y-%m")
+        month_label = local_start.strftime("%B %Y")
+        date_key = local_start.strftime("%Y-%m-%d")
+        date_label = local_start.strftime("%a %d %b")
 
         if month_key not in grouped:
             grouped[month_key] = {
@@ -215,9 +223,9 @@ def available_slots_api(request):
             }
 
         grouped[month_key]["dates"][date_key]["slots"].append({
-            "start": slot["start"].isoformat(),
-            "end": slot["end"].isoformat(),
-            "time_label": f'{slot["start"].strftime("%H:%M")} → {slot["end"].strftime("%H:%M")}',
+            "start": local_start.isoformat(),
+            "end": local_end.isoformat(),
+            "time_label": f"{local_start.strftime('%H:%M')} → {local_end.strftime('%H:%M')}",
         })
 
     months = []
@@ -263,6 +271,18 @@ def create_booking(request):
 
         start_time = parse_datetime(request.POST.get("start_time", ""))
         end_time = parse_datetime(request.POST.get("end_time", ""))
+
+        if start_time and timezone.is_naive(start_time):
+            start_time = timezone.make_aware(
+                start_time,
+                timezone.get_current_timezone()
+            )
+
+        if end_time and timezone.is_naive(end_time):
+            end_time = timezone.make_aware(
+                end_time,
+                timezone.get_current_timezone()
+            )
 
         nail_colour_notes = request.POST.get("nail_colour_notes", "").strip()
         nail_vibe_notes = request.POST.get("nail_vibe_notes", "").strip()

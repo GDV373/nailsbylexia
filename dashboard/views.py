@@ -1,16 +1,17 @@
 import calendar
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from bookings.models import AvailabilitySlot, Booking
 from bookings.views import send_booking_email
 from services.models import NailService
-from django.db.models.deletion import ProtectedError
+
 
 User = get_user_model()
 
@@ -18,9 +19,18 @@ User = get_user_model()
 @staff_member_required
 def availability_builder(request):
     months = [
-        (1, "Jan"), (2, "Feb"), (3, "Mar"), (4, "Apr"),
-        (5, "May"), (6, "Jun"), (7, "Jul"), (8, "Aug"),
-        (9, "Sep"), (10, "Oct"), (11, "Nov"), (12, "Dec"),
+        (1, "Jan"),
+        (2, "Feb"),
+        (3, "Mar"),
+        (4, "Apr"),
+        (5, "May"),
+        (6, "Jun"),
+        (7, "Jul"),
+        (8, "Aug"),
+        (9, "Sep"),
+        (10, "Oct"),
+        (11, "Nov"),
+        (12, "Dec"),
     ]
 
     weekdays = [
@@ -33,7 +43,100 @@ def availability_builder(request):
         (6, "Sunday"),
     ]
 
+    current_tz = timezone.get_current_timezone()
+    today = timezone.localdate()
+
+    week_start_raw = request.GET.get("week_start")
+
+    if week_start_raw:
+        try:
+            selected_week_start = datetime.strptime(week_start_raw, "%Y-%m-%d").date()
+        except ValueError:
+            selected_week_start = today - timedelta(days=today.weekday())
+    else:
+        selected_week_start = today - timedelta(days=today.weekday())
+
+    selected_week_start = selected_week_start - timedelta(days=selected_week_start.weekday())
+    previous_week_start = selected_week_start - timedelta(days=7)
+    next_week_start = selected_week_start + timedelta(days=7)
+
+    week_days = []
+
+    for i in range(7):
+        date_obj = selected_week_start + timedelta(days=i)
+
+        week_days.append({
+            "date": date_obj,
+            "date_iso": date_obj.strftime("%Y-%m-%d"),
+            "date_display": date_obj.strftime("%d-%m-%Y"),
+            "day_short": date_obj.strftime("%a"),
+            "day_full": date_obj.strftime("%A"),
+        })
+
     if request.method == "POST":
+        entry_mode = request.POST.get("entry_mode", "bulk")
+
+        if entry_mode == "weekly":
+            weekly_dates = request.POST.getlist("weekly_date")
+            weekly_starts = request.POST.getlist("weekly_start")
+            weekly_ends = request.POST.getlist("weekly_end")
+
+            created_count = 0
+            skipped_count = 0
+
+            for date_raw, start_raw, end_raw in zip(weekly_dates, weekly_starts, weekly_ends):
+                if not date_raw or not start_raw or not end_raw:
+                    skipped_count += 1
+                    continue
+
+                try:
+                    date_obj = datetime.strptime(date_raw, "%Y-%m-%d").date()
+
+                    start_hour, start_minute = map(int, start_raw.split(":"))
+                    end_hour, end_minute = map(int, end_raw.split(":"))
+
+                    start_dt = timezone.make_aware(
+                        datetime.combine(date_obj, time(start_hour, start_minute)),
+                        current_tz
+                    )
+
+                    end_dt = timezone.make_aware(
+                        datetime.combine(date_obj, time(end_hour, end_minute)),
+                        current_tz
+                    )
+                except (ValueError, TypeError):
+                    skipped_count += 1
+                    continue
+
+                if end_dt <= start_dt:
+                    skipped_count += 1
+                    continue
+
+                exists = AvailabilitySlot.objects.filter(
+                    start_time=start_dt,
+                    end_time=end_dt,
+                ).exists()
+
+                if exists:
+                    skipped_count += 1
+                    continue
+
+                AvailabilitySlot.objects.create(
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    active=True,
+                )
+
+                created_count += 1
+
+            messages.success(
+                request,
+                f"Weekly entry created {created_count} availability slot(s). "
+                f"Skipped {skipped_count} duplicate/invalid slot(s)."
+            )
+
+            return redirect(f"{request.path}?week_start={selected_week_start.strftime('%Y-%m-%d')}")
+
         year = int(request.POST.get("year"))
         selected_months = [int(m) for m in request.POST.getlist("months")]
         selected_days = [int(d) for d in request.POST.getlist("weekdays")]
@@ -45,7 +148,6 @@ def availability_builder(request):
 
         created_count = 0
         skipped_count = 0
-        current_tz = timezone.get_current_timezone()
 
         for month in selected_months:
             _, days_in_month = calendar.monthrange(year, month)
@@ -58,6 +160,7 @@ def availability_builder(request):
                     continue
 
                 is_weekend = weekday in [5, 6]
+
                 start_raw = weekend_start if is_weekend else weekday_start
                 end_raw = weekend_end if is_weekend else weekday_end
 
@@ -96,7 +199,8 @@ def availability_builder(request):
 
         messages.success(
             request,
-            f"Created {created_count} availability slots. Skipped {skipped_count} duplicates/invalid slots."
+            f"Created {created_count} availability slots. "
+            f"Skipped {skipped_count} duplicates/invalid slots."
         )
 
         return redirect("availability_builder")
@@ -108,6 +212,10 @@ def availability_builder(request):
         "weekdays": weekdays,
         "slots": slots,
         "current_year": timezone.now().year,
+        "week_days": week_days,
+        "selected_week_start": selected_week_start,
+        "previous_week_start": previous_week_start,
+        "next_week_start": next_week_start,
     })
 
 
@@ -124,6 +232,7 @@ def edit_availability(request, slot_id):
         current_tz = timezone.get_current_timezone()
 
         date_obj = datetime.strptime(date_raw, "%Y-%m-%d").date()
+
         start_hour, start_minute = map(int, start_raw.split(":"))
         end_hour, end_minute = map(int, end_raw.split(":"))
 
@@ -289,7 +398,8 @@ def delete_service(request, service_id):
             service.save()
             messages.warning(
                 request,
-                "This service has existing bookings, so it cannot be deleted. It has been deactivated instead."
+                "This service has existing bookings, so it cannot be deleted. "
+                "It has been deactivated instead."
             )
 
         return redirect("services_manager")

@@ -3,19 +3,101 @@
 {% block content %}
 
 <style>
-    .builder-card { border-radius: 24px; border: 0; }
-    .option-card {
-        border: 2px solid #eee;
-        border-radius: 16px;
-        cursor: pointer;
-        padding: 14px;
-        text-align: center;
-        transition: 0.2s ease;
-        user-select: none;
+    .dashboard-card {
+        border-radius: 24px;
+        border: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
     }
-    .option-card:hover { border-color: #212529; transform: translateY(-2px); }
-    .option-card input { display: none; }
-    .option-card:has(input:checked) { background: #111; color: white; border-color: #111; }
+
+    .mode-btn {
+        border-radius: 16px;
+        padding: 14px 22px;
+        font-weight: 700;
+    }
+
+    .mode-btn.active {
+        background: #111;
+        color: white;
+        border-color: #111;
+    }
+
+    .day-box {
+        border: 2px solid #eee;
+        border-radius: 22px;
+        padding: 18px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: 0.2s ease;
+        background: white;
+        min-height: 115px;
+    }
+
+    .day-box:hover {
+        transform: translateY(-2px);
+        border-color: #111;
+    }
+
+    .day-box.selected {
+        border-color: #111;
+        background: #fff8fb;
+    }
+
+    .day-box .day-name {
+        font-size: 1.2rem;
+        font-weight: 800;
+    }
+
+    .day-box .date-text {
+        font-size: 0.95rem;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .selected-day-card {
+        border: 1px solid #eee;
+        border-radius: 22px;
+        background: #fff;
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+
+    .time-range-row {
+        border-radius: 16px;
+        background: #f8f9fa;
+        padding: 14px;
+        margin-bottom: 10px;
+    }
+
+    .small-rounded {
+        border-radius: 14px;
+    }
+
+    .hidden-mode {
+        display: none;
+    }
+
+    .existing-slot-card {
+        border: 1px solid #eee;
+        border-radius: 20px;
+        padding: 16px;
+        margin-bottom: 12px;
+        background: white;
+    }
+
+    .week-arrow {
+        min-width: 145px;
+    }
+
+    @media (max-width: 768px) {
+        .week-arrow {
+            min-width: auto;
+            width: 100%;
+        }
+
+        .week-nav-wrap {
+            gap: 10px;
+        }
+    }
 </style>
 
 <div class="container py-5">
@@ -26,158 +108,450 @@
             <p class="text-muted mb-0">Create, edit and delete working availability.</p>
         </div>
 
-        <div class="d-flex gap-2 mt-3 mt-md-0">
-            <a href="{% url 'services_manager' %}" class="btn btn-outline-dark">Manage Services</a>
-            <a href="{% url 'admin_users' %}" class="btn btn-outline-dark">Manage Users</a>
-            <a href="/admin/" class="btn btn-dark">Django Admin</a>
+        <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+            <a href="{% url 'services_manager' %}" class="btn btn-outline-dark small-rounded">Manage Services</a>
+            <a href="{% url 'admin_users' %}" class="btn btn-outline-dark small-rounded">Manage Users</a>
+            <a href="/admin/" class="btn btn-dark small-rounded">Django Admin</a>
         </div>
     </div>
 
-    <form method="post">
-        {% csrf_token %}
+    <div class="card dashboard-card mb-4">
+        <div class="card-body p-4">
 
-        <div class="card shadow-sm builder-card mb-4">
-            <div class="card-body p-4">
-                <h3>1. Select Year</h3>
-                <input type="number" name="year" class="form-control form-control-lg" value="{{ current_year }}" min="2024" max="2035" required>
+            <div class="d-flex flex-column flex-md-row gap-3 mb-4">
+                <button type="button" class="btn btn-outline-dark mode-btn active" id="weeklyModeBtn">
+                    Weekly Entry
+                </button>
+
+                <button type="button" class="btn btn-outline-dark mode-btn" id="bulkModeBtn">
+                    Bulk Entry
+                </button>
             </div>
-        </div>
 
-        <div class="card shadow-sm builder-card mb-4">
-            <div class="card-body p-4">
-                <h3>2. Select Months</h3>
+            <!-- WEEKLY ENTRY -->
+            <div id="weeklyEntrySection">
 
-                <div class="row g-3 mt-2">
-                    {% for value, label in months %}
-                        <div class="col-4 col-md-3">
-                            <label class="option-card d-block">
-                                <input type="checkbox" name="months" value="{{ value }}">
-                                {{ label }}
-                            </label>
-                        </div>
-                    {% endfor %}
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center week-nav-wrap mb-4">
+                    <a
+                        href="{% url 'availability_builder' %}?week_start={{ previous_week_start|date:'Y-m-d' }}"
+                        class="btn btn-outline-dark week-arrow"
+                    >
+                        ← Previous Week
+                    </a>
+
+                    <h4 class="fw-bold mb-0 text-center">
+                        {{ selected_week_start|date:"d M Y" }}
+                        -
+                        {{ week_days.6.date|date:"d M Y" }}
+                    </h4>
+
+                    <a
+                        href="{% url 'availability_builder' %}?week_start={{ next_week_start|date:'Y-m-d' }}"
+                        class="btn btn-outline-dark week-arrow"
+                    >
+                        Next Week →
+                    </a>
                 </div>
 
-                <div class="mt-3 d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="selectAll('months')">All Months</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAll('months')">Clear</button>
-                </div>
-            </div>
-        </div>
+                <form method="post" id="weeklyAvailabilityForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="entry_mode" value="weekly">
 
-        <div class="card shadow-sm builder-card mb-4">
-            <div class="card-body p-4">
-                <h3>3. Select Working Days</h3>
+                    <h4 class="fw-bold mb-3">1. Select Working Days</h4>
 
-                <div class="row g-3 mt-2">
-                    {% for value, label in weekdays %}
-                        <div class="col-6 col-md-4">
-                            <label class="option-card d-block">
-                                <input type="checkbox" name="weekdays" value="{{ value }}">
-                                {{ label }}
-                            </label>
-                        </div>
-                    {% endfor %}
-                </div>
-
-                <div class="mt-3 d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="selectWeekdays()">Mon-Fri</button>
-                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="selectWeekend()">Weekend</button>
-                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="selectAll('weekdays')">All Days</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAll('weekdays')">Clear</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-md-6">
-                <div class="card shadow-sm builder-card h-100">
-                    <div class="card-body p-4">
-                        <h3>4. Weekday Hours</h3>
-                        <label class="form-label fw-semibold">Start</label>
-                        <input type="time" name="weekday_start" class="form-control form-control-lg mb-3" value="09:00">
-                        <label class="form-label fw-semibold">End</label>
-                        <input type="time" name="weekday_end" class="form-control form-control-lg" value="17:00">
+                    <div class="row g-3 mb-4">
+                        {% for day in week_days %}
+                            <div class="col-6 col-md">
+                                <div
+                                    class="day-box weekly-day-box"
+                                    data-date="{{ day.date_iso }}"
+                                    data-label="{{ day.day_full }} {{ day.date_display }}"
+                                    data-day-name="{{ day.day_full }}"
+                                    data-date-display="{{ day.date_display }}"
+                                >
+                                    <div class="day-name">{{ day.day_short }}</div>
+                                    <div class="date-text">{{ day.date_display }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
-                </div>
-            </div>
 
-            <div class="col-md-6">
-                <div class="card shadow-sm builder-card h-100">
-                    <div class="card-body p-4">
-                        <h3>5. Weekend Hours</h3>
-                        <label class="form-label fw-semibold">Start</label>
-                        <input type="time" name="weekend_start" class="form-control form-control-lg mb-3" value="10:00">
-                        <label class="form-label fw-semibold">End</label>
-                        <input type="time" name="weekend_end" class="form-control form-control-lg" value="14:00">
+                    <h4 class="fw-bold mb-3">2. Add Time Ranges</h4>
+
+                    <div id="selectedDaysContainer">
+                        <div class="alert alert-info mb-0" id="noSelectedDaysMessage">
+                            Select one or more days above to add working hours.
+                        </div>
                     </div>
-                </div>
+
+                    <button type="submit" class="btn btn-dark btn-lg w-100 mt-4">
+                        Save Weekly Availability
+                    </button>
+                </form>
+
             </div>
-        </div>
 
-        <button type="submit" class="btn btn-dark btn-lg w-100">Generate Availability</button>
-    </form>
+            <!-- BULK ENTRY -->
+            <div id="bulkEntrySection" class="hidden-mode">
 
-    <hr class="my-5">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="entry_mode" value="bulk">
 
-    <h2 class="fw-bold mb-3">Existing Availability</h2>
+                    <h4 class="fw-bold mb-3">1. Select Year</h4>
 
-    {% if slots %}
-        <div class="row g-3">
-            {% for slot in slots %}
-                <div class="col-md-6">
-                    <div class="card shadow-sm border-0" style="border-radius: 18px;">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between gap-3">
-                                <div>
-                                    <strong>{{ slot.start_time|date:"D d M Y" }}</strong><br>
-                                    {{ slot.start_time|date:"H:i" }} → {{ slot.end_time|date:"H:i" }}
+                    <div class="mb-4">
+                        <input
+                            type="number"
+                            name="year"
+                            class="form-control form-control-lg"
+                            value="{{ current_year }}"
+                            required
+                        >
+                    </div>
 
-                                    {% if slot.active %}
-                                        <span class="badge bg-success ms-2">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary ms-2">Inactive</span>
-                                    {% endif %}
+                    <h4 class="fw-bold mb-3">2. Select Months</h4>
+
+                    <div class="row g-2 mb-3">
+                        {% for value, label in months %}
+                            <div class="col-4 col-md-2">
+                                <label class="btn btn-outline-dark w-100 small-rounded month-toggle">
+                                    <input type="checkbox" name="months" value="{{ value }}" class="d-none">
+                                    {{ label }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2 mb-4">
+                        <button type="button" class="btn btn-sm btn-dark small-rounded" id="selectAllMonths">All Months</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark small-rounded" id="clearMonths">Clear</button>
+                    </div>
+
+                    <h4 class="fw-bold mb-3">3. Select Working Days</h4>
+
+                    <div class="row g-2 mb-3">
+                        {% for value, label in weekdays %}
+                            <div class="col-6 col-md-3">
+                                <label class="btn btn-outline-dark w-100 small-rounded weekday-toggle">
+                                    <input type="checkbox" name="weekdays" value="{{ value }}" class="d-none">
+                                    {{ label }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        <button type="button" class="btn btn-sm btn-dark small-rounded" id="selectWeekdays">Mon-Fri</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark small-rounded" id="selectWeekend">Weekend</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark small-rounded" id="selectAllDays">All Days</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger small-rounded" id="clearDays">Clear</button>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h4 class="fw-bold mb-3">4. Weekday Hours</h4>
+
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="form-label">Start</label>
+                                    <input type="time" name="weekday_start" class="form-control" value="09:00">
                                 </div>
 
-                                <div class="d-flex gap-2">
-                                    <a href="{% url 'edit_availability' slot.id %}" class="btn btn-sm btn-outline-dark">Edit</a>
-                                    <a href="{% url 'delete_availability' slot.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                <div class="col-6">
+                                    <label class="form-label">End</label>
+                                    <input type="time" name="weekday_end" class="form-control" value="17:00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h4 class="fw-bold mb-3">5. Weekend Hours</h4>
+
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="form-label">Start</label>
+                                    <input type="time" name="weekend_start" class="form-control" value="09:00">
+                                </div>
+
+                                <div class="col-6">
+                                    <label class="form-label">End</label>
+                                    <input type="time" name="weekend_end" class="form-control" value="17:00">
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            {% endfor %}
+
+                    <button type="submit" class="btn btn-dark btn-lg w-100 mt-4">
+                        Generate Availability
+                    </button>
+                </form>
+
+            </div>
+
         </div>
-    {% else %}
-        <div class="alert alert-info">No availability created yet.</div>
-    {% endif %}
+    </div>
+
+    <div class="card dashboard-card">
+        <div class="card-body p-4">
+            <h2 class="fw-bold mb-3">Existing Availability</h2>
+
+            {% if slots %}
+                {% for slot in slots %}
+                    <div class="existing-slot-card d-flex flex-column flex-md-row justify-content-between gap-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">
+                                {{ slot.start_time|date:"D d M Y" }}
+                            </h5>
+
+                            <p class="mb-1">
+                                {{ slot.start_time|date:"H:i" }} → {{ slot.end_time|date:"H:i" }}
+                            </p>
+
+                            {% if slot.active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex align-items-start gap-2">
+                            <a href="{% url 'edit_availability' slot.id %}" class="btn btn-outline-dark btn-sm">
+                                Edit
+                            </a>
+
+                            <a href="{% url 'delete_availability' slot.id %}" class="btn btn-outline-danger btn-sm">
+                                Delete
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info mb-0">
+                    No availability created yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
 
 </div>
 
 <script>
-function selectAll(name) {
-    document.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.checked = true);
-}
+document.addEventListener("DOMContentLoaded", function () {
+    const weeklyModeBtn = document.getElementById("weeklyModeBtn");
+    const bulkModeBtn = document.getElementById("bulkModeBtn");
+    const weeklyEntrySection = document.getElementById("weeklyEntrySection");
+    const bulkEntrySection = document.getElementById("bulkEntrySection");
 
-function clearAll(name) {
-    document.querySelectorAll(`input[name="${name}"]`).forEach(cb => cb.checked = false);
-}
+    const selectedDaysContainer = document.getElementById("selectedDaysContainer");
+    const noSelectedDaysMessage = document.getElementById("noSelectedDaysMessage");
 
-function selectWeekdays() {
-    clearAll("weekdays");
-    ["0", "1", "2", "3", "4"].forEach(value => {
-        document.querySelector(`input[name="weekdays"][value="${value}"]`).checked = true;
+    function showWeeklyMode() {
+        weeklyModeBtn.classList.add("active");
+        bulkModeBtn.classList.remove("active");
+
+        weeklyEntrySection.classList.remove("hidden-mode");
+        bulkEntrySection.classList.add("hidden-mode");
+    }
+
+    function showBulkMode() {
+        bulkModeBtn.classList.add("active");
+        weeklyModeBtn.classList.remove("active");
+
+        bulkEntrySection.classList.remove("hidden-mode");
+        weeklyEntrySection.classList.add("hidden-mode");
+    }
+
+    weeklyModeBtn.addEventListener("click", showWeeklyMode);
+    bulkModeBtn.addEventListener("click", showBulkMode);
+
+    function updateNoSelectedDaysMessage() {
+        const selectedCards = document.querySelectorAll(".selected-day-card");
+
+        if (selectedCards.length > 0) {
+            noSelectedDaysMessage.style.display = "none";
+        } else {
+            noSelectedDaysMessage.style.display = "block";
+        }
+    }
+
+    function createTimeRangeRow(dateValue) {
+        const row = document.createElement("div");
+        row.className = "time-range-row";
+
+        row.innerHTML = `
+            <input type="hidden" name="weekly_date" value="${dateValue}">
+
+            <div class="row g-2 align-items-end">
+                <div class="col-5">
+                    <label class="form-label small mb-1">Start</label>
+                    <input type="time" name="weekly_start" class="form-control" value="09:00" required>
+                </div>
+
+                <div class="col-5">
+                    <label class="form-label small mb-1">End</label>
+                    <input type="time" name="weekly_end" class="form-control" value="17:00" required>
+                </div>
+
+                <div class="col-2">
+                    <button type="button" class="btn btn-outline-danger w-100 remove-range-btn">
+                        ×
+                    </button>
+                </div>
+            </div>
+        `;
+
+        row.querySelector(".remove-range-btn").addEventListener("click", function () {
+            const parentCard = row.closest(".selected-day-card");
+            const rangeRows = parentCard.querySelectorAll(".time-range-row");
+
+            if (rangeRows.length <= 1) {
+                return;
+            }
+
+            row.remove();
+        });
+
+        return row;
+    }
+
+    function createSelectedDayCard(dayBox) {
+        const dateValue = dayBox.dataset.date;
+        const label = dayBox.dataset.label;
+
+        const card = document.createElement("div");
+        card.className = "selected-day-card";
+        card.dataset.date = dateValue;
+        card.id = `selected-day-${dateValue}`;
+
+        card.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">${label}</h5>
+                    <p class="text-muted mb-0">Add one or more available working time ranges.</p>
+                </div>
+
+                <button type="button" class="btn btn-outline-dark btn-sm add-range-btn">
+                    + Add Time
+                </button>
+            </div>
+
+            <div class="ranges-container"></div>
+        `;
+
+        const rangesContainer = card.querySelector(".ranges-container");
+        rangesContainer.appendChild(createTimeRangeRow(dateValue));
+
+        card.querySelector(".add-range-btn").addEventListener("click", function () {
+            rangesContainer.appendChild(createTimeRangeRow(dateValue));
+        });
+
+        selectedDaysContainer.appendChild(card);
+        updateNoSelectedDaysMessage();
+    }
+
+    function removeSelectedDayCard(dateValue) {
+        const card = document.getElementById(`selected-day-${dateValue}`);
+
+        if (card) {
+            card.remove();
+        }
+
+        updateNoSelectedDaysMessage();
+    }
+
+    document.querySelectorAll(".weekly-day-box").forEach(function (dayBox) {
+        dayBox.addEventListener("click", function () {
+            const dateValue = dayBox.dataset.date;
+
+            if (dayBox.classList.contains("selected")) {
+                dayBox.classList.remove("selected");
+                removeSelectedDayCard(dateValue);
+                return;
+            }
+
+            dayBox.classList.add("selected");
+            createSelectedDayCard(dayBox);
+        });
     });
-}
 
-function selectWeekend() {
-    clearAll("weekdays");
-    ["5", "6"].forEach(value => {
-        document.querySelector(`input[name="weekdays"][value="${value}"]`).checked = true;
+    function setToggleState(label, checked) {
+        const input = label.querySelector("input");
+
+        if (!input) {
+            return;
+        }
+
+        input.checked = checked;
+
+        if (checked) {
+            label.classList.remove("btn-outline-dark");
+            label.classList.add("btn-dark");
+        } else {
+            label.classList.remove("btn-dark");
+            label.classList.add("btn-outline-dark");
+        }
+    }
+
+    document.querySelectorAll(".month-toggle, .weekday-toggle").forEach(function (label) {
+        label.addEventListener("click", function (event) {
+            event.preventDefault();
+
+            const input = label.querySelector("input");
+            setToggleState(label, !input.checked);
+        });
     });
-}
+
+    document.getElementById("selectAllMonths").addEventListener("click", function () {
+        document.querySelectorAll(".month-toggle").forEach(function (label) {
+            setToggleState(label, true);
+        });
+    });
+
+    document.getElementById("clearMonths").addEventListener("click", function () {
+        document.querySelectorAll(".month-toggle").forEach(function (label) {
+            setToggleState(label, false);
+        });
+    });
+
+    document.getElementById("selectWeekdays").addEventListener("click", function () {
+        document.querySelectorAll(".weekday-toggle").forEach(function (label) {
+            const value = parseInt(label.querySelector("input").value);
+            setToggleState(label, value >= 0 && value <= 4);
+        });
+    });
+
+    document.getElementById("selectWeekend").addEventListener("click", function () {
+        document.querySelectorAll(".weekday-toggle").forEach(function (label) {
+            const value = parseInt(label.querySelector("input").value);
+            setToggleState(label, value === 5 || value === 6);
+        });
+    });
+
+    document.getElementById("selectAllDays").addEventListener("click", function () {
+        document.querySelectorAll(".weekday-toggle").forEach(function (label) {
+            setToggleState(label, true);
+        });
+    });
+
+    document.getElementById("clearDays").addEventListener("click", function () {
+        document.querySelectorAll(".weekday-toggle").forEach(function (label) {
+            setToggleState(label, false);
+        });
+    });
+
+    document.getElementById("weeklyAvailabilityForm").addEventListener("submit", function (event) {
+        const selectedCards = document.querySelectorAll(".selected-day-card");
+
+        if (selectedCards.length === 0) {
+            event.preventDefault();
+            alert("Please select at least one day.");
+            return;
+        }
+    });
+
+    showWeeklyMode();
+});
 </script>
 
 {% endblock %}

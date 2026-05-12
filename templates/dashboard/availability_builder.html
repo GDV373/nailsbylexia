@@ -338,6 +338,8 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const DRAFT_KEY = "nails_by_lexia_weekly_availability_draft";
+
     const weeklyModeBtn = document.getElementById("weeklyModeBtn");
     const bulkModeBtn = document.getElementById("bulkModeBtn");
     const weeklyEntrySection = document.getElementById("weeklyEntrySection");
@@ -345,6 +347,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const selectedDaysContainer = document.getElementById("selectedDaysContainer");
     const noSelectedDaysMessage = document.getElementById("noSelectedDaysMessage");
+    const weeklyAvailabilityForm = document.getElementById("weeklyAvailabilityForm");
 
     function showWeeklyMode() {
         weeklyModeBtn.classList.add("active");
@@ -375,7 +378,42 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function createTimeRangeRow(dateValue) {
+    function getDraftData() {
+        const data = [];
+
+        document.querySelectorAll(".selected-day-card").forEach(function (card) {
+            const ranges = [];
+
+            card.querySelectorAll(".time-range-row").forEach(function (row) {
+                const startInput = row.querySelector("input[name='weekly_start']");
+                const endInput = row.querySelector("input[name='weekly_end']");
+
+                ranges.push({
+                    start: startInput ? startInput.value : "09:00",
+                    end: endInput ? endInput.value : "17:00"
+                });
+            });
+
+            data.push({
+                date: card.dataset.date,
+                label: card.dataset.label,
+                ranges: ranges
+            });
+        });
+
+        return data;
+    }
+
+    function saveDraft() {
+        const data = getDraftData();
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    }
+
+    function clearDraft() {
+        sessionStorage.removeItem(DRAFT_KEY);
+    }
+
+    function createTimeRangeRow(dateValue, startValue = "09:00", endValue = "17:00") {
         const row = document.createElement("div");
         row.className = "time-range-row";
 
@@ -385,12 +423,12 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="row g-2 align-items-end">
                 <div class="col-5">
                     <label class="form-label small mb-1">Start</label>
-                    <input type="time" name="weekly_start" class="form-control" value="09:00" required>
+                    <input type="time" name="weekly_start" class="form-control" value="${startValue}" required>
                 </div>
 
                 <div class="col-5">
                     <label class="form-label small mb-1">End</label>
-                    <input type="time" name="weekly_end" class="form-control" value="17:00" required>
+                    <input type="time" name="weekly_end" class="form-control" value="${endValue}" required>
                 </div>
 
                 <div class="col-2">
@@ -401,27 +439,37 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `;
 
+        row.querySelectorAll("input").forEach(function (input) {
+            input.addEventListener("change", saveDraft);
+        });
+
         row.querySelector(".remove-range-btn").addEventListener("click", function () {
             const parentCard = row.closest(".selected-day-card");
             const rangeRows = parentCard.querySelectorAll(".time-range-row");
 
             if (rangeRows.length <= 1) {
+                alert("Each selected day must have at least one time range.");
                 return;
             }
 
             row.remove();
+            saveDraft();
         });
 
         return row;
     }
 
-    function createSelectedDayCard(dayBox) {
-        const dateValue = dayBox.dataset.date;
-        const label = dayBox.dataset.label;
+    function createSelectedDayCardFromData(dateValue, label, ranges = null) {
+        const existingCard = document.getElementById(`selected-day-${dateValue}`);
+
+        if (existingCard) {
+            return;
+        }
 
         const card = document.createElement("div");
         card.className = "selected-day-card";
         card.dataset.date = dateValue;
+        card.dataset.label = label;
         card.id = `selected-day-${dateValue}`;
 
         card.innerHTML = `
@@ -440,14 +488,36 @@ document.addEventListener("DOMContentLoaded", function () {
         `;
 
         const rangesContainer = card.querySelector(".ranges-container");
-        rangesContainer.appendChild(createTimeRangeRow(dateValue));
+
+        if (ranges && ranges.length > 0) {
+            ranges.forEach(function (range) {
+                rangesContainer.appendChild(
+                    createTimeRangeRow(
+                        dateValue,
+                        range.start || "09:00",
+                        range.end || "17:00"
+                    )
+                );
+            });
+        } else {
+            rangesContainer.appendChild(createTimeRangeRow(dateValue));
+        }
 
         card.querySelector(".add-range-btn").addEventListener("click", function () {
             rangesContainer.appendChild(createTimeRangeRow(dateValue));
+            saveDraft();
         });
 
         selectedDaysContainer.appendChild(card);
         updateNoSelectedDaysMessage();
+        saveDraft();
+    }
+
+    function createSelectedDayCard(dayBox) {
+        const dateValue = dayBox.dataset.date;
+        const label = dayBox.dataset.label;
+
+        createSelectedDayCardFromData(dateValue, label);
     }
 
     function removeSelectedDayCard(dateValue) {
@@ -456,6 +526,52 @@ document.addEventListener("DOMContentLoaded", function () {
         if (card) {
             card.remove();
         }
+
+        updateNoSelectedDaysMessage();
+        saveDraft();
+    }
+
+    function restoreDraft() {
+        const rawDraft = sessionStorage.getItem(DRAFT_KEY);
+
+        if (!rawDraft) {
+            updateNoSelectedDaysMessage();
+            return;
+        }
+
+        let draft;
+
+        try {
+            draft = JSON.parse(rawDraft);
+        } catch (e) {
+            clearDraft();
+            updateNoSelectedDaysMessage();
+            return;
+        }
+
+        if (!Array.isArray(draft)) {
+            clearDraft();
+            updateNoSelectedDaysMessage();
+            return;
+        }
+
+        draft.forEach(function (item) {
+            if (!item.date || !item.label) {
+                return;
+            }
+
+            createSelectedDayCardFromData(
+                item.date,
+                item.label,
+                item.ranges || []
+            );
+
+            const matchingDayBox = document.querySelector(`.weekly-day-box[data-date="${item.date}"]`);
+
+            if (matchingDayBox) {
+                matchingDayBox.classList.add("selected");
+            }
+        });
 
         updateNoSelectedDaysMessage();
     }
@@ -472,6 +588,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             dayBox.classList.add("selected");
             createSelectedDayCard(dayBox);
+        });
+    });
+
+    document.querySelectorAll("a[href*='week_start=']").forEach(function (link) {
+        link.addEventListener("click", function () {
+            saveDraft();
         });
     });
 
@@ -540,7 +662,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    document.getElementById("weeklyAvailabilityForm").addEventListener("submit", function (event) {
+    weeklyAvailabilityForm.addEventListener("submit", function (event) {
         const selectedCards = document.querySelectorAll(".selected-day-card");
 
         if (selectedCards.length === 0) {
@@ -548,8 +670,11 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Please select at least one day.");
             return;
         }
+
+        clearDraft();
     });
 
+    restoreDraft();
     showWeeklyMode();
 });
 </script>

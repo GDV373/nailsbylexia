@@ -10,30 +10,17 @@ from django.utils.dateparse import parse_datetime
 import requests
 
 from services.models import NailService
-from .models import AvailabilitySlot, Booking
+from .models import AvailabilitySlot, Booking, EmailLog
 
 
 def send_booking_email(booking, subject_prefix):
     relay_url = getattr(settings, "EMAIL_RELAY_URL", None)
     relay_secret = getattr(settings, "EMAIL_RELAY_SECRET", None)
 
-    if not relay_url or not relay_secret:
-        print("Email relay is not configured. Email not sent.")
-        return
-
     subject = f"{subject_prefix} - Nails by Lexia Booking"
 
     payload = {
         "subject": subject,
-        "booking_id": booking.id,
-        "email_action": subject_prefix,
-        "calendar_uid": f"booking-{booking.id}@nailsbylexia.local",
-        "calendar_method": "CANCEL" if booking.status == "cancelled" else "REQUEST",
-        "calendar_status": "CANCELLED" if booking.status == "cancelled" else "CONFIRMED",
-        "calendar_sequence": 2 if booking.status == "cancelled" else (1 if "Updated" in subject_prefix else 0),
-        "start_iso": booking.start_time.isoformat(),
-        "end_iso": booking.end_time.isoformat(),
-
         "customer_email": booking.client.email,
         "admin_email": getattr(settings, "ADMIN_BOOKING_EMAIL", None),
 
@@ -57,6 +44,34 @@ def send_booking_email(booking, subject_prefix):
         "toe_vibe": booking.toe_vibe_notes or None,
     }
 
+    recipients = []
+
+    if booking.client.email:
+        recipients.append(booking.client.email)
+
+    admin_email = getattr(settings, "ADMIN_BOOKING_EMAIL", None)
+
+    if admin_email:
+        recipients.append(admin_email)
+
+    email_log = EmailLog.objects.create(
+        booking=booking,
+        subject=subject,
+        recipient_emails=", ".join(recipients),
+        payload=payload,
+        status="pending",
+    )
+
+    if not relay_url or not relay_secret:
+        email_log.status = "failed"
+        email_log.error_message = "Email relay is not configured."
+        email_log.attempts += 1
+        email_log.last_attempt_at = timezone.now()
+        email_log.save()
+
+        print("Email relay is not configured. Email not sent.")
+        return
+
     try:
         response = requests.post(
             relay_url,
@@ -65,10 +80,29 @@ def send_booking_email(booking, subject_prefix):
             timeout=8,
         )
 
+        email_log.attempts += 1
+        email_log.last_attempt_at = timezone.now()
+
         if response.status_code >= 400:
+            email_log.status = "failed"
+            email_log.error_message = f"{response.status_code} - {response.text}"
+            email_log.save()
+
             print(f"Email relay failed: {response.status_code} - {response.text}")
+            return
+
+        email_log.status = "sent"
+        email_log.sent_at = timezone.now()
+        email_log.error_message = ""
+        email_log.save()
 
     except Exception as e:
+        email_log.attempts += 1
+        email_log.last_attempt_at = timezone.now()
+        email_log.status = "failed"
+        email_log.error_message = str(e)
+        email_log.save()
+
         print(f"Email relay error: {e}")
 
 

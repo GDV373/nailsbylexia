@@ -289,6 +289,8 @@
                         </div>
 
                         <hr>
+                        <p><strong>Date:</strong> <span id="mobileSelectedDate">Not selected</span></p>
+                        <p><strong>Time:</strong> <span id="mobileSelectedTime">Not selected</span></p>
                         <p><strong>Total:</strong> €<span id="mobileTotalPrice">0</span></p>
                         <p><strong>Duration:</strong> <span id="mobileTotalDuration">0</span> mins</p>
                     </div>
@@ -334,6 +336,8 @@
 
                         <div id="totalSummary" class="hidden-step">
                             <hr>
+                            <p><strong>Date:</strong> <span id="desktopSelectedDate">Not selected</span></p>
+                            <p><strong>Time:</strong> <span id="desktopSelectedTime">Not selected</span></p>
                             <p><strong>Total:</strong> €<span id="desktopTotalPrice">0</span></p>
                             <p><strong>Duration:</strong> <span id="desktopTotalDuration">0</span> mins</p>
                         </div>
@@ -389,8 +393,76 @@ document.addEventListener("DOMContentLoaded", function () {
     function resetSelectedTime() {
         startTimeInput.value = "";
         endTimeInput.value = "";
+
+        const desktopDate = document.getElementById("desktopSelectedDate");
+        const desktopTime = document.getElementById("desktopSelectedTime");
+        const mobileDate = document.getElementById("mobileSelectedDate");
+        const mobileTime = document.getElementById("mobileSelectedTime");
+
+        if (desktopDate) {
+            desktopDate.textContent = "Not selected";
+        }
+
+        if (desktopTime) {
+            desktopTime.textContent = "Not selected";
+        }
+
+        if (mobileDate) {
+            mobileDate.textContent = "Not selected";
+        }
+
+        if (mobileTime) {
+            mobileTime.textContent = "Not selected";
+        }
+
         hide(cashStep);
         hide(confirmButton);
+    }
+
+    function updateSelectedDateTimeSummary(startIso, endIso) {
+        const startDate = new Date(startIso);
+        const endDate = new Date(endIso);
+
+        const dateText = startDate.toLocaleDateString("en-GB", {
+            weekday: "short",
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+
+        const timeText =
+            startDate.toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }) +
+            " → " +
+            endDate.toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            });
+
+        const desktopDate = document.getElementById("desktopSelectedDate");
+        const desktopTime = document.getElementById("desktopSelectedTime");
+        const mobileDate = document.getElementById("mobileSelectedDate");
+        const mobileTime = document.getElementById("mobileSelectedTime");
+
+        if (desktopDate) {
+            desktopDate.textContent = dateText;
+        }
+
+        if (desktopTime) {
+            desktopTime.textContent = timeText;
+        }
+
+        if (mobileDate) {
+            mobileDate.textContent = dateText;
+        }
+
+        if (mobileTime) {
+            mobileTime.textContent = timeText;
+        }
     }
 
     function shouldShowTimeStep() {
@@ -806,6 +878,8 @@ document.addEventListener("DOMContentLoaded", function () {
                             });
 
                             card.classList.add("selected");
+
+                            updateSelectedDateTimeSummary(card.dataset.start, card.dataset.end);
 
                             show(cashStep);
                             show(confirmButton);

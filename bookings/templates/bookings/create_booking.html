@@ -419,29 +419,22 @@ document.addEventListener("DOMContentLoaded", function () {
         hide(confirmButton);
     }
 
-    function updateSelectedDateTimeSummary(startIso, endIso) {
-        const startDate = new Date(startIso);
-        const endDate = new Date(endIso);
+    function updateSelectedDateTimeSummary(startIso, timeLabel) {
+        const datePart = startIso.substring(0, 10);
+        const parts = datePart.split("-");
 
-        const dateText = startDate.toLocaleDateString("en-GB", {
+        const selectedDate = new Date(
+            parseInt(parts[0]),
+            parseInt(parts[1]) - 1,
+            parseInt(parts[2])
+        );
+
+        const dateText = selectedDate.toLocaleDateString("en-GB", {
             weekday: "short",
             day: "2-digit",
             month: "short",
             year: "numeric"
         });
-
-        const timeText =
-            startDate.toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            }) +
-            " → " +
-            endDate.toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            });
 
         const desktopDate = document.getElementById("desktopSelectedDate");
         const desktopTime = document.getElementById("desktopSelectedTime");
@@ -453,7 +446,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (desktopTime) {
-            desktopTime.textContent = timeText;
+            desktopTime.textContent = timeLabel;
         }
 
         if (mobileDate) {
@@ -461,7 +454,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (mobileTime) {
-            mobileTime.textContent = timeText;
+            mobileTime.textContent = timeLabel;
         }
     }
 
@@ -856,6 +849,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     class="choice-card d-block p-3 slot-card"
                                     data-start="${slot.start}"
                                     data-end="${slot.end}"
+                                    data-label="${slot.time_label}"
                                 >
                                     <input type="radio" name="slot_choice" required>
                                     ${slot.time_label}
@@ -879,7 +873,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                             card.classList.add("selected");
 
-                            updateSelectedDateTimeSummary(card.dataset.start, card.dataset.end);
+                            updateSelectedDateTimeSummary(card.dataset.start, card.dataset.label);
 
                             show(cashStep);
                             show(confirmButton);

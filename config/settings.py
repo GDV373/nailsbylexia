@@ -165,7 +165,7 @@ APPOINTMENT_LOCATION_LONGITUDE = os.environ.get(
 APPOINTMENT_MAPS_URL = os.environ.get(
     "APPOINTMENT_MAPS_URL",
     (
-        "https://www.google.com/maps/dir/?api=1&destination="
+        "https://www.google.com/maps/search/?api=1&query="
         f"{APPOINTMENT_LOCATION_LATITUDE},{APPOINTMENT_LOCATION_LONGITUDE}"
     ),
 )

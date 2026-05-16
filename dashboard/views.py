@@ -550,7 +550,7 @@ def complete_booking(request, booking_id):
         booking.status = "done"
         booking.save()
 
-        send_booking_email(booking, "Thank You - Booking Completed")
+        send_booking_email(booking, "Thank You - Booking Completed", "completed")
 
         messages.success(
             request,

@@ -1,10 +1,12 @@
 from datetime import timedelta
+from urllib.parse import urljoin
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 import requests
@@ -13,7 +15,14 @@ from services.models import NailService
 from .models import AvailabilitySlot, Booking, EmailLog
 
 
-def send_booking_email(booking, subject_prefix):
+def build_public_url(route_name):
+    return urljoin(
+        f"{settings.PUBLIC_SITE_URL}/",
+        reverse(route_name).lstrip("/"),
+    )
+
+
+def send_booking_email(booking, subject_prefix, notification_type):
     relay_url = getattr(settings, "EMAIL_RELAY_URL", None)
     relay_secret = getattr(settings, "EMAIL_RELAY_SECRET", None)
 
@@ -22,8 +31,16 @@ def send_booking_email(booking, subject_prefix):
     local_start = timezone.localtime(booking.start_time)
     local_end = timezone.localtime(booking.end_time)
 
+    policies_url = build_public_url("policies_page")
+    faq_url = build_public_url("faq_page")
+    directions_url = settings.APPOINTMENT_MAPS_URL
+    include_calendar_invite = notification_type in {"created", "updated", "cancelled"}
+    calendar_method = "CANCEL" if notification_type == "cancelled" else "REQUEST"
+    calendar_status = "CANCELLED" if notification_type == "cancelled" else "CONFIRMED"
+
     payload = {
         "subject": subject,
+        "notification_type": notification_type,
         "customer_email": booking.client.email,
         "admin_email": getattr(settings, "ADMIN_BOOKING_EMAIL", None),
 
@@ -45,7 +62,34 @@ def send_booking_email(booking, subject_prefix):
         "toe_service": booking.toe_service.name if booking.toe_service else None,
         "toe_colours": booking.toe_colour_notes or None,
         "toe_vibe": booking.toe_vibe_notes or None,
+
+        "policy_url": policies_url,
+        "faq_url": faq_url,
+        "directions_url": directions_url,
+        "location_name": settings.APPOINTMENT_LOCATION_NAME,
+        "location_latitude": settings.APPOINTMENT_LOCATION_LATITUDE,
+        "location_longitude": settings.APPOINTMENT_LOCATION_LONGITUDE,
+
+        "location": {
+            "name": settings.APPOINTMENT_LOCATION_NAME,
+            "latitude": settings.APPOINTMENT_LOCATION_LATITUDE,
+            "longitude": settings.APPOINTMENT_LOCATION_LONGITUDE,
+            "maps_url": directions_url,
+        },
+
     }
+
+    if include_calendar_invite:
+        payload.update({
+            "booking_id": booking.id,
+            "email_action": notification_type,
+            "calendar_uid": f"booking-{booking.id}@nailsbylexia",
+            "calendar_method": calendar_method,
+            "calendar_status": calendar_status,
+            "calendar_sequence": int(timezone.now().timestamp()),
+            "start_iso": booking.start_time.isoformat(),
+            "end_iso": booking.end_time.isoformat(),
+        })
 
     recipients = []
 
@@ -344,7 +388,7 @@ def create_booking(request):
             status="confirmed",
         )
 
-        send_booking_email(booking, "New Booking")
+        send_booking_email(booking, "New Booking", "created")
         messages.success(request, "Booking confirmed successfully.")
         return redirect("account_dashboard")
 
@@ -385,7 +429,7 @@ def edit_booking(request, booking_id):
 
         booking.save()
 
-        send_booking_email(booking, "Booking Updated")
+        send_booking_email(booking, "Booking Updated", "updated")
         messages.success(request, "Booking updated successfully.")
         return redirect("account_dashboard")
 
@@ -400,7 +444,7 @@ def cancel_booking(request, booking_id):
         booking.status = "cancelled"
         booking.save()
 
-        send_booking_email(booking, "Booking Cancelled")
+        send_booking_email(booking, "Booking Cancelled", "cancelled")
         messages.success(request, "Booking cancelled successfully.")
         return redirect("account_dashboard")
 

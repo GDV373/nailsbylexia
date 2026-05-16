@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .info-hero {
+        background: linear-gradient(135deg, #fff7fb 0%, #ffffff 55%, #f8f1f4 100%);
+        padding: 70px 0;
+    }
+
+    .faq-card {
+        border: 0;
+        border-radius: 24px;
+    }
+
+    .faq-item + .faq-item {
+        border-top: 1px solid #eee;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+    }
+
+    .faq-kicker {
+        color: #c05278;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+    }
+</style>
+
+<section class="info-hero">
+    <div class="container text-center">
+        <h1 class="fw-bold display-5 mb-3">FAQs</h1>
+        <p class="text-muted mb-0">
+            Helpful details before your appointment.
+        </p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="card shadow-sm faq-card">
+            <div class="card-body p-4 p-md-5">
+
+                <div class="faq-item">
+                    <p class="faq-kicker mb-2">Parking</p>
+                    <h2 class="h4 fw-bold">Is there free parking?</h2>
+                    <p class="mb-0 text-muted">
+                        Yes. There is free street parking outside. Please note that the road is one way.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <p class="faq-kicker mb-2">Timing</p>
+                    <h2 class="h4 fw-bold">How long is my appointment?</h2>
+                    <p class="mb-0 text-muted">
+                        The booking page shows the estimated duration based on the service or combination of services you choose.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <p class="faq-kicker mb-2">Rebooking</p>
+                    <h2 class="h4 fw-bold">Can I book my next appointment during my appointment?</h2>
+                    <p class="mb-0 text-muted">
+                        Yes, but booking in advance online is the best way to secure the time you want.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <p class="faq-kicker mb-2">Directions</p>
+                    <h2 class="h4 fw-bold">Where do I find the exact location?</h2>
+                    <p class="mb-0 text-muted">
+                        Your confirmation email includes a map link and calendar location for directions to the salon.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <p class="faq-kicker mb-2">Before you arrive</p>
+                    <h2 class="h4 fw-bold">Do I need to prepare anything before my appointment?</h2>
+                    <p class="mb-0 text-muted">
+                        Please review the policies before booking, especially the notes about clean nails, timing, and solo appointments.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{% url 'policies_page' %}" class="btn btn-outline-dark btn-lg">
+                Read Policies
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

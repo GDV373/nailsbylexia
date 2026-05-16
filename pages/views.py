@@ -26,3 +26,11 @@ def services_page(request):
 
 def contact_page(request):
     return render(request, "pages/contact.html")
+
+
+def policies_page(request):
+    return render(request, "pages/policies.html")
+
+
+def faq_page(request):
+    return render(request, "pages/faq.html")

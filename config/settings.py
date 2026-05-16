@@ -145,6 +145,31 @@ ADMIN_BOOKING_EMAIL = os.environ.get("ADMIN_BOOKING_EMAIL")
 EMAIL_RELAY_URL = os.environ.get("EMAIL_RELAY_URL")
 EMAIL_RELAY_SECRET = os.environ.get("EMAIL_RELAY_SECRET")
 
+PUBLIC_SITE_URL = os.environ.get(
+    "PUBLIC_SITE_URL",
+    "https://nailsbylexia.onrender.com",
+).rstrip("/")
+
+APPOINTMENT_LOCATION_NAME = os.environ.get(
+    "APPOINTMENT_LOCATION_NAME",
+    "Nails by Lexia",
+)
+APPOINTMENT_LOCATION_LATITUDE = os.environ.get(
+    "APPOINTMENT_LOCATION_LATITUDE",
+    "35.860339081827604",
+)
+APPOINTMENT_LOCATION_LONGITUDE = os.environ.get(
+    "APPOINTMENT_LOCATION_LONGITUDE",
+    "14.56516855039647",
+)
+APPOINTMENT_MAPS_URL = os.environ.get(
+    "APPOINTMENT_MAPS_URL",
+    (
+        "https://www.google.com/maps/dir/?api=1&destination="
+        f"{APPOINTMENT_LOCATION_LATITUDE},{APPOINTMENT_LOCATION_LONGITUDE}"
+    ),
+)
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {

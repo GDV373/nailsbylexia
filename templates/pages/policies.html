@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .info-hero {
+        background: linear-gradient(135deg, #fff7fb 0%, #ffffff 55%, #f8f1f4 100%);
+        padding: 70px 0;
+    }
+
+    .policy-card {
+        border: 0;
+        border-radius: 24px;
+        height: 100%;
+    }
+
+    .policy-pill {
+        display: inline-block;
+        border-radius: 999px;
+        background: #f8f1f4;
+        color: #111;
+        padding: 7px 13px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-bottom: 14px;
+    }
+
+    .policy-list li + li {
+        margin-top: 0.9rem;
+    }
+</style>
+
+<section class="info-hero">
+    <div class="container text-center">
+        <h1 class="fw-bold display-5 mb-3">Policies</h1>
+        <p class="text-muted mb-0">
+            A few simple guidelines so appointments stay smooth, calm, and on time.
+        </p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm policy-card">
+                    <div class="card-body p-4">
+                        <span class="policy-pill">Booking</span>
+                        <h2 class="h4 fw-bold mb-3">Booking</h2>
+                        <ul class="policy-list mb-0">
+                            <li>Please use the online booking page to secure your appointment.</li>
+                            <li>Please choose the service that best matches what you want so the right amount of time is reserved.</li>
+                            <li>If you would like to change or add more nail art on the day, this depends on the time available.</li>
+                            <li>If you need to reschedule, please do so with at least 48 hours notice where possible.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm policy-card">
+                    <div class="card-body p-4">
+                        <span class="policy-pill">Cancellations</span>
+                        <h2 class="h4 fw-bold mb-3">Cancellations &amp; No Shows</h2>
+                        <ul class="policy-list mb-0">
+                            <li>Please cancel or reschedule at least 48 hours before your appointment whenever possible.</li>
+                            <li>Repeated late cancellations or no-shows may affect future booking access.</li>
+                            <li>If you are more than 15 minutes late, the appointment may need to be shortened or cancelled depending on the schedule.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm policy-card">
+                    <div class="card-body p-4">
+                        <span class="policy-pill">Nails</span>
+                        <h2 class="h4 fw-bold mb-3">Removal &amp; Nail Fixes</h2>
+                        <ul class="policy-list mb-0">
+                            <li>Please arrive with clean, bare nails unless removal has been arranged in advance.</li>
+                            <li>If you think a natural nail needs attention before your appointment, please mention it before booking.</li>
+                            <li>If a nail fix is needed soon after your appointment because of prep or application, please get in touch so it can be reviewed.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm policy-card">
+                    <div class="card-body p-4">
+                        <span class="policy-pill">Other</span>
+                        <h2 class="h4 fw-bold mb-3">Other</h2>
+                        <ul class="policy-list mb-0">
+                            <li>Please arrive on time for your appointment.</li>
+                            <li>This is a private home salon, so appointments are for one client at a time only.</li>
+                            <li>There is a cat in the home, so please keep this in mind if you have a severe allergy.</li>
+                            <li>Photos of your nails may be taken. If you do not want them featured, please let me know.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card border-0 bg-dark text-white mt-5" style="border-radius: 24px;">
+            <div class="card-body p-4 p-md-5 text-center">
+                <h2 class="fw-bold mb-3">Questions before booking?</h2>
+                <p class="text-white-50 mb-4">
+                    The FAQ page covers parking, timing, and appointment details.
+                </p>
+                <a href="{% url 'faq_page' %}" class="btn btn-light btn-lg px-4">
+                    View FAQs
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

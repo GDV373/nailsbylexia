@@ -87,8 +87,23 @@
             <div class="d-flex gap-2 mt-3">
 
                 <a href="{% url 'edit_booking' booking.id %}" class="btn btn-outline-dark btn-sm">
-                    Edit
+                    Edit Notes
                 </a>
+
+                {% if booking.start_time > reschedule_cutoff %}
+                    <a href="{% url 'reschedule_booking' booking.id %}" class="btn btn-outline-dark btn-sm">
+                        Reschedule
+                    </a>
+                {% else %}
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        onclick="alert('Bookings cannot be changed within 24 hours. Please email or call us for help.')"
+                        aria-disabled="true"
+                    >
+                        Reschedule
+                    </button>
+                {% endif %}
 
                 <a href="{% url 'cancel_booking' booking.id %}" class="btn btn-outline-danger btn-sm">
                     Cancel

@@ -22,7 +22,7 @@ def build_public_url(route_name):
     )
 
 
-def send_booking_email(booking, subject_prefix, notification_type):
+def send_booking_email(booking, subject_prefix, notification_type, extra_payload=None):
     relay_url = getattr(settings, "EMAIL_RELAY_URL", None)
     relay_secret = getattr(settings, "EMAIL_RELAY_SECRET", None)
 
@@ -78,6 +78,9 @@ def send_booking_email(booking, subject_prefix, notification_type):
         },
 
     }
+
+    if extra_payload:
+        payload.update(extra_payload)
 
     if include_calendar_invite:
         payload.update({
@@ -155,7 +158,7 @@ def send_booking_email(booking, subject_prefix, notification_type):
         print(f"Email relay error: {e}")
 
 
-def get_available_slots(total_duration):
+def get_available_slots(total_duration, exclude_booking_id=None):
     available_slots = []
     now = timezone.now()
 
@@ -177,7 +180,9 @@ def get_available_slots(total_duration):
             status__in=["confirmed", "done"],
             start_time__lt=latest_end,
             end_time__gt=earliest_start,
-        ).values("start_time", "end_time")
+        )
+        .exclude(id=exclude_booking_id)
+        .values("start_time", "end_time")
     )
 
     for slot in availability_slots:
@@ -230,16 +235,36 @@ def get_available_slots(total_duration):
     return available_slots
 
 
+def fits_active_availability(start_time, end_time):
+    return AvailabilitySlot.objects.filter(
+        active=True,
+        start_time__lte=start_time,
+        end_time__gte=end_time,
+    ).exists()
+
+
 @login_required
 def available_slots_api(request):
     duration = request.GET.get("duration")
+    exclude_booking_id = request.GET.get("exclude_booking_id")
 
     try:
         duration = int(duration)
     except (TypeError, ValueError):
         return JsonResponse({"months": []})
 
-    slots = get_available_slots(duration)
+    try:
+        exclude_booking_id = int(exclude_booking_id) if exclude_booking_id else None
+    except (TypeError, ValueError):
+        exclude_booking_id = None
+
+    if exclude_booking_id:
+        allowed = Booking.objects.filter(id=exclude_booking_id, client=request.user).exists()
+
+        if not allowed and not request.user.is_staff:
+            exclude_booking_id = None
+
+    slots = get_available_slots(duration, exclude_booking_id=exclude_booking_id)
 
     grouped = {}
 
@@ -372,6 +397,10 @@ def create_booking(request):
             messages.error(request, "This time has already been booked. Please choose another time.")
             return redirect("create_booking")
 
+        if not fits_active_availability(start_time, end_time):
+            messages.error(request, "That time is no longer available. Please choose another slot.")
+            return redirect("create_booking")
+
         booking = Booking.objects.create(
             client=request.user,
             booking_type=booking_type,
@@ -449,6 +478,95 @@ def cancel_booking(request, booking_id):
         return redirect("account_dashboard")
 
     return render(request, "bookings/cancel_booking.html", {"booking": booking})
+
+
+def customer_can_reschedule(booking):
+    return (
+        booking.status == "confirmed"
+        and booking.start_time > timezone.now() + timedelta(hours=24)
+    )
+
+
+@login_required
+def reschedule_booking(request, booking_id):
+    booking = get_object_or_404(
+        Booking.objects.select_related("nail_service", "toe_service"),
+        id=booking_id,
+        client=request.user,
+    )
+
+    if booking.status != "confirmed":
+        messages.error(request, "Only confirmed bookings can be rescheduled.")
+        return redirect("account_dashboard")
+
+    if not customer_can_reschedule(booking):
+        messages.error(
+            request,
+            "Bookings cannot be changed within 24 hours. Please email or call us for help."
+        )
+        return redirect("account_dashboard")
+
+    if request.method == "POST":
+        start_time = parse_datetime(request.POST.get("start_time", ""))
+        end_time = parse_datetime(request.POST.get("end_time", ""))
+
+        if start_time and timezone.is_naive(start_time):
+            start_time = timezone.make_aware(start_time, timezone.get_current_timezone())
+
+        if end_time and timezone.is_naive(end_time):
+            end_time = timezone.make_aware(end_time, timezone.get_current_timezone())
+
+        expected_duration = timedelta(minutes=booking.total_duration_minutes)
+
+        if not start_time or not end_time:
+            messages.error(request, "Please choose a new available time.")
+            return redirect("reschedule_booking", booking_id=booking.id)
+
+        if end_time - start_time != expected_duration:
+            messages.error(request, "The selected time does not match this booking duration.")
+            return redirect("reschedule_booking", booking_id=booking.id)
+
+        overlap = Booking.objects.filter(
+            status__in=["confirmed", "done"],
+            start_time__lt=end_time,
+            end_time__gt=start_time,
+        ).exclude(id=booking.id).exists()
+
+        if overlap:
+            messages.error(request, "That time has already been booked. Please choose another slot.")
+            return redirect("reschedule_booking", booking_id=booking.id)
+
+        if not fits_active_availability(start_time, end_time):
+            messages.error(request, "That time is no longer available. Please choose another slot.")
+            return redirect("reschedule_booking", booking_id=booking.id)
+
+        previous_start = booking.start_time
+        previous_end = booking.end_time
+        booking.start_time = start_time
+        booking.end_time = end_time
+        booking.save()
+
+        send_booking_email(
+            booking,
+            "Booking Rescheduled",
+            "updated",
+            {
+                "reschedule_note": "The customer rescheduled this appointment online.",
+                "previous_booking_date": timezone.localtime(previous_start).strftime("%d %B %Y"),
+                "previous_booking_time": (
+                    f"{timezone.localtime(previous_start).strftime('%H:%M')} to "
+                    f"{timezone.localtime(previous_end).strftime('%H:%M')}"
+                ),
+            },
+        )
+
+        messages.success(request, "Booking rescheduled successfully.")
+        return redirect("account_dashboard")
+
+    return render(request, "bookings/reschedule_booking.html", {
+        "booking": booking,
+        "duration_minutes": booking.total_duration_minutes,
+    })
 
 
 def booking_success(request):

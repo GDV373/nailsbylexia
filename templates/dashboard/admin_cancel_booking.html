@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0" style="border-radius: 24px;">
+                <div class="card-body p-4 p-md-5">
+                    <h1 class="fw-bold mb-3">Cancel Booking</h1>
+
+                    <p class="text-muted">
+                        This will cancel the appointment, send a cancellation email, and send a calendar cancellation update.
+                    </p>
+
+                    <div class="bg-light rounded-4 p-3 mb-4">
+                        <p class="mb-1"><strong>Customer:</strong> {{ booking.client.email }}</p>
+                        <p class="mb-1"><strong>Date:</strong> {{ booking.start_time|date:"D d M Y" }}</p>
+                        <p class="mb-0"><strong>Time:</strong> {{ booking.start_time|date:"H:i" }} → {{ booking.end_time|date:"H:i" }}</p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <label class="form-label fw-semibold">Apology note in the email</label>
+                        <textarea
+                            name="cancellation_note"
+                            class="form-control mb-4"
+                            rows="5"
+                        >{{ default_note }}</textarea>
+
+                        <div class="d-flex flex-column flex-sm-row gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                Cancel Booking and Send Email
+                            </button>
+                            <a href="{% url 'admin_bookings' %}" class="btn btn-outline-dark">
+                                Go Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib import messages
@@ -5,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import render, redirect
+from django.utils import timezone
 from bookings.models import Booking
 
 from .forms import RegisterForm, LoginForm, CompleteProfileForm, AccountUpdateForm
@@ -98,11 +101,13 @@ def account_dashboard(request):
     active_bookings = all_bookings.exclude(status__in=["cancelled", "done"]).order_by("start_time")
     done_bookings = all_bookings.filter(status="done").order_by("-start_time")
     cancelled_bookings = all_bookings.filter(status="cancelled").order_by("-start_time")
+    reschedule_cutoff = timezone.now() + timedelta(hours=24)
 
     return render(request, "accounts/account_dashboard.html", {
         "active_bookings": active_bookings,
         "done_bookings": done_bookings,
         "cancelled_bookings": cancelled_bookings,
+        "reschedule_cutoff": reschedule_cutoff,
     })
 
 

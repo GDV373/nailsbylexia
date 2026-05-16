@@ -7,9 +7,10 @@ from django.contrib.auth import get_user_model
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from bookings.models import AvailabilitySlot, Booking
-from bookings.views import send_booking_email
+from bookings.views import fits_active_availability, send_booking_email
 from services.models import NailService
 
 
@@ -558,3 +559,119 @@ def complete_booking(request, booking_id):
         )
 
     return redirect("admin_bookings")
+
+
+@staff_member_required
+def admin_cancel_booking(request, booking_id):
+    booking = get_object_or_404(
+        Booking.objects.select_related("client", "nail_service", "toe_service"),
+        id=booking_id,
+    )
+
+    if booking.status != "confirmed":
+        messages.error(request, "Only confirmed bookings can be cancelled from here.")
+        return redirect("admin_bookings")
+
+    default_note = (
+        "We are very sorry, but your appointment needs to be cancelled. "
+        "Please contact us if you would like help arranging another time."
+    )
+
+    if request.method == "POST":
+        cancellation_note = request.POST.get("cancellation_note", "").strip() or default_note
+        booking.status = "cancelled"
+        booking.save()
+
+        send_booking_email(
+            booking,
+            "Booking Cancelled by Nails by Lexia",
+            "cancelled",
+            {
+                "cancellation_note": cancellation_note,
+                "cancelled_by": "admin",
+            },
+        )
+
+        messages.success(request, "Booking cancelled and customer email sent.")
+        return redirect("admin_bookings")
+
+    return render(request, "dashboard/admin_cancel_booking.html", {
+        "booking": booking,
+        "default_note": default_note,
+    })
+
+
+@staff_member_required
+def admin_reschedule_booking(request, booking_id):
+    booking = get_object_or_404(
+        Booking.objects.select_related("client", "nail_service", "toe_service"),
+        id=booking_id,
+    )
+
+    if booking.status != "confirmed":
+        messages.error(request, "Only confirmed bookings can be rescheduled.")
+        return redirect("admin_bookings")
+
+    if request.method == "POST":
+        start_time = parse_datetime(request.POST.get("start_time", ""))
+        end_time = parse_datetime(request.POST.get("end_time", ""))
+        admin_note = request.POST.get("admin_note", "").strip()
+
+        if start_time and timezone.is_naive(start_time):
+            start_time = timezone.make_aware(start_time, timezone.get_current_timezone())
+
+        if end_time and timezone.is_naive(end_time):
+            end_time = timezone.make_aware(end_time, timezone.get_current_timezone())
+
+        expected_duration = timedelta(minutes=booking.total_duration_minutes)
+
+        if not start_time or not end_time:
+            messages.error(request, "Please choose a new available time.")
+            return redirect("admin_reschedule_booking", booking_id=booking.id)
+
+        if end_time - start_time != expected_duration:
+            messages.error(request, "The selected time does not match this booking duration.")
+            return redirect("admin_reschedule_booking", booking_id=booking.id)
+
+        overlap = Booking.objects.filter(
+            status__in=["confirmed", "done"],
+            start_time__lt=end_time,
+            end_time__gt=start_time,
+        ).exclude(id=booking.id).exists()
+
+        if overlap:
+            messages.error(request, "That time has already been booked. Please choose another slot.")
+            return redirect("admin_reschedule_booking", booking_id=booking.id)
+
+        if not fits_active_availability(start_time, end_time):
+            messages.error(request, "That time is no longer available. Please choose another slot.")
+            return redirect("admin_reschedule_booking", booking_id=booking.id)
+
+        previous_start = booking.start_time
+        previous_end = booking.end_time
+        booking.start_time = start_time
+        booking.end_time = end_time
+        booking.save()
+
+        send_booking_email(
+            booking,
+            "Booking Rescheduled by Nails by Lexia",
+            "updated",
+            {
+                "reschedule_note": admin_note,
+                "rescheduled_by": "admin",
+                "previous_booking_date": timezone.localtime(previous_start).strftime("%d %B %Y"),
+                "previous_booking_time": (
+                    f"{timezone.localtime(previous_start).strftime('%H:%M')} to "
+                    f"{timezone.localtime(previous_end).strftime('%H:%M')}"
+                ),
+            },
+        )
+
+        messages.success(request, "Booking rescheduled and customer email sent.")
+        return redirect("admin_bookings")
+
+    return render(request, "dashboard/admin_reschedule_booking.html", {
+        "booking": booking,
+        "duration_minutes": booking.total_duration_minutes,
+    })
